@@ -287,6 +287,7 @@ td.actions-cell{display:flex;gap:12px}
 .etq-qr{display:flex;align-items:center;justify-content:center}
 .etq-qr canvas{width:34mm!important;height:34mm!important;image-rendering:pixelated}
 .etq-peso-destaque{font-size:20pt;font-weight:900;text-align:center;line-height:1}
+.etq-bitola-grande{font-size:20pt;font-weight:900}
 .etq-peso-destaque .etq-peso-unidade{font-size:11pt;font-weight:700}
 .etq-body{display:flex;gap:3mm;flex:1;align-items:center}
 .etq-tbl{flex:1;border-collapse:collapse;font-size:10pt;color:#000!important}
@@ -375,7 +376,7 @@ td.actions-cell{display:flex;gap:12px}
       <div class="gate-card gc-amber" tabindex="0" role="button" onclick="showScreen('screen-etiqueta')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-etiqueta');}">
         <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l8-8h6a2 2 0 012 2v6l-8 8a2 2 0 01-2.8 0l-5.2-5.2a2 2 0 010-2.8z"/><circle cx="14.5" cy="9.5" r="1.3"/></svg></div>
         <div class="gc-name">Gerar etiqueta</div>
-        <div class="gc-desc">Etiqueta de rolos de arame, avulsa ou reimpressão</div>
+        <div class="gc-desc">Reimprimir etiqueta de rolo já cadastrado</div>
       </div>
     </div>
 
@@ -541,23 +542,6 @@ td.actions-cell{display:flex;gap:12px}
           <button class="btn btn-accent" type="submit">Registrar entrada e gerar etiqueta</button>
         </form>
       </div>
-
-      <div class="fbox">
-        <h4>Só gerar etiqueta (sem salvar)</h4>
-        <form id="form-etiqueta-avulsa-mov" onsubmit="gerarEtiquetaAvulsa(event)">
-          <div class="row2">
-            <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" name="peso" required></div>
-            <div class="field"><label>Fornecedor (opcional)</label><input type="text" name="fornecedor"></div>
-          </div>
-          <div class="row2">
-            <div class="field"><label>Bitola (opcional)</label><select name="bitola" class="bitola-select"><option value="">—</option></select></div>
-            <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
-          </div>
-          <div class="field"><label>Operador responsável</label><select name="operador" class="operador-select"><option value="">Selecione o operador</option></select></div>
-          <button class="btn btn-ghost" type="submit">Gerar etiqueta</button>
-          <p class="hint" style="margin-top:8px;display:block;">Não grava no banco — só pra imprimir na hora.</p>
-        </form>
-      </div>
     </div>
 
     <div id="mov-entrada-result-view" style="display:none;">
@@ -599,13 +583,11 @@ td.actions-cell{display:flex;gap:12px}
       </div>
 
       <div class="fbox">
-        <h4>Baixa manual</h4>
+        <h4>Dar saída (remove o rolo do estoque)</h4>
         <form id="form-saida-rolo" onsubmit="registrarSaidaRolo(event)">
           <div class="field"><label>Rolo</label><select id="sr-rolo" required></select></div>
-          <div class="row2">
-            <div class="field"><label>Peso a dar baixa (kg)</label><input type="number" step="0.01" id="sr-peso" required></div>
-            <div class="field"><label>Motivo</label><input type="text" id="sr-motivo" placeholder="transferência, perda, ajuste"></div>
-          </div>
+          <div class="field"><label>Motivo (opcional)</label><input type="text" id="sr-motivo" placeholder="transferência, perda, defeito, fim de uso"></div>
+          <p class="hint" style="margin-bottom:14px;display:block;">O rolo sai inteiro do estoque ativo — não é uma baixa parcial de peso.</p>
           <div class="alert alert-err" id="alerta-saida"></div>
           <button class="btn btn-accent" type="submit">Registrar saída</button>
         </form>
@@ -669,22 +651,8 @@ td.actions-cell{display:flex;gap:12px}
   </div>
   <div class="content">
     <div class="fbox">
-      <h4>Etiqueta avulsa (sem salvar no estoque)</h4>
-      <form id="form-etiqueta-avulsa" onsubmit="gerarEtiquetaAvulsa(event)">
-        <div class="row2">
-          <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" name="peso" required></div>
-          <div class="field"><label>Fornecedor (opcional)</label><input type="text" name="fornecedor"></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Bitola (opcional)</label><select name="bitola" class="bitola-select"><option value="">—</option></select></div>
-          <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
-        </div>
-        <div class="field"><label>Operador responsável</label><select name="operador" class="operador-select"><option value="">Selecione o operador</option></select></div>
-        <button class="btn btn-accent" type="submit">Gerar etiqueta</button>
-      </form>
-    </div>
-    <div class="fbox">
       <h4>Reimprimir etiqueta de um rolo já cadastrado</h4>
+      <p class="hint" style="margin-bottom:10px;display:block;">Pra criar um rolo novo (e a etiqueta dele), use Movimentação → Entrada.</p>
       <div id="lista-rolos-etiqueta"><div class="empty">Configure o Supabase para carregar esta lista.</div></div>
     </div>
   </div>
@@ -825,7 +793,7 @@ function showScreen(id) {
 
   if (id === 'screen-mov-saida') { loadRolosAtivos(); }
   if (id === 'screen-mov-entrada') { loadBitolas(); loadOperadores(); preencherDataHoje(); }
-  if (id === 'screen-etiqueta') { loadRolosAtivos(); loadBitolas(); loadOperadores(); }
+  if (id === 'screen-etiqueta') { loadRolosAtivos(); }
   if (id === 'screen-producao') { loadRolosAtivos(); loadPecas(); loadOperadores(); loadHistoricoProducao(); }
   if (id === 'screen-estoque') { loadEstoque(); }
 
@@ -914,47 +882,24 @@ function resetEntradaForm() {
   preencherDataHoje();
 }
 
-function gerarEtiquetaAvulsa(e) {
-  e.preventDefault();
-  const peso = parseFloat(e.target.querySelector('[name="peso"]').value);
-  const fornecedor = e.target.querySelector('[name="fornecedor"]').value.trim();
-  const loteFornecedor = e.target.querySelector('[name="lote_fornecedor"]').value.trim();
-  const bitolaSel = e.target.querySelector('[name="bitola"]');
-  const bitolaTexto = bitolaSel && bitolaSel.value ? bitolaSel.options[bitolaSel.selectedIndex].textContent : null;
-  const operadorSel = e.target.querySelector('[name="operador"]');
-  const operadorTexto = operadorSel && operadorSel.value ? operadorSel.options[operadorSel.selectedIndex].textContent : null;
-  if (!peso || peso <= 0) { alert('Informe o peso do rolo antes de gerar a etiqueta'); return; }
-  abrirEtiquetaRolo({
-    lote: `RL-${hojeStr()}-PRÉVIA`, peso_entrada_kg: peso, fornecedor, bitola_texto: bitolaTexto,
-    operador_texto: operadorTexto, lote_fornecedor: loteFornecedor, data_entrada: new Date().toISOString(),
-    avulsa: true
-  });
-}
-
 /* ===================== MOVIMENTAÇÃO — SAÍDA ===================== */
 async function registrarSaidaRolo(e) {
   e.preventDefault();
   limparAlertas('alerta-saida');
   if (!checarSb()) { setAlerta('alerta-saida', 'err', 'Supabase não configurado.'); return; }
   const roloId = qs('#sr-rolo').value;
-  const peso = parseFloat(qs('#sr-peso').value);
   const motivo = qs('#sr-motivo').value.trim();
   if (!roloId) { setAlerta('alerta-saida', 'err', 'Selecione um rolo'); return; }
-  if (!peso || peso <= 0) { setAlerta('alerta-saida', 'err', 'Informe um peso válido'); return; }
 
   const { data: rolo, error: e1 } = await sb.from('rolos_arame').select('*').eq('id', roloId).single();
   if (e1) { setAlerta('alerta-saida', 'err', e1.message); return; }
 
-  const limite = await getLimiteZerarRolo();
-  let novoPeso = rolo.peso_atual_kg - peso;
-  let novoStatus = rolo.status;
-  if (novoPeso < limite) { novoPeso = 0; novoStatus = 'zerado'; }
-
-  const { error: e2 } = await sb.from('rolos_arame').update({ peso_atual_kg: novoPeso, status: novoStatus }).eq('id', roloId);
+  const pesoNoMomento = rolo.peso_atual_kg;
+  const { error: e2 } = await sb.from('rolos_arame').update({ peso_atual_kg: 0, status: 'zerado' }).eq('id', roloId);
   if (e2) { setAlerta('alerta-saida', 'err', e2.message); return; }
-  await sb.from('movimentacoes_rolo').insert({ rolo_id: roloId, tipo: 'saida', peso_kg: peso, motivo: motivo || null });
+  await sb.from('movimentacoes_rolo').insert({ rolo_id: roloId, tipo: 'saida', peso_kg: pesoNoMomento, motivo: motivo || null });
 
-  qs('#sr-result-sub').textContent = `Rolo ${rolo.lote} — baixa de ${peso.toFixed(1)} kg`;
+  qs('#sr-result-sub').textContent = `Rolo nº ${rolo.numero_sequencial} removido do estoque${motivo ? ' — ' + motivo : ''}`;
   qs('#mov-saida-form-view').style.display = 'none';
   qs('#mov-saida-result-view').style.display = 'block';
 }
@@ -1308,43 +1253,22 @@ function desenharQr(codigo, tentativas) {
   });
 }
 
-function proximoContadorAvulsa() {
-  const atual = parseInt(localStorage.getItem('avulsa_contador') || '0', 10) + 1;
-  try { localStorage.setItem('avulsa_contador', String(atual)); } catch (e) {}
-  return atual;
-}
-
 function abrirEtiquetaRolo(rolo) {
-  const bitolaTxt = rolo.bitola_texto || (rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) : '-');
-  const operadorTxt = rolo.operador_texto || rolo.operadores?.nome || '-';
+  const bitolaTxt = rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) : '-';
+  const operadorTxt = rolo.operadores?.nome || '-';
   const loteTxt = rolo.lote_fornecedor || '-';
-  const numeroTxt = rolo.numero_sequencial != null ? String(rolo.numero_sequencial)
-    : (rolo.avulsa ? String(proximoContadorAvulsa()) : '—');
+  const numeroTxt = rolo.numero_sequencial != null ? String(rolo.numero_sequencial) : '—';
 
-  // Rolo real: o QR guarda só o número sequencial — escanear (ou digitar esse número
-  // na mão) busca o registro ao vivo no banco (peso atual/status atualizados, não um
-  // retrato congelado do momento da entrada). O código interno RL-... continua existindo
-  // só como chave técnica no banco, sem aparecer mais na etiqueta.
-  // Avulsa: não existe registro nenhum pra buscar depois, então o QR carrega os dados
-  // completos direto, senão escanear essa etiqueta depois não levaria a lugar nenhum.
-  // O número da avulsa vem de um contador local (localStorage), só pra cada etiqueta
-  // avulsa impressa ter um identificador único — não é ligado a nenhum registro real.
-  const qrPayload = rolo.avulsa
-    ? [
-        `VITALBOR - ENTRADA DE ROLO (AVULSA Nº ${numeroTxt})`,
-        `Lote fornecedor: ${loteTxt}`,
-        `Peso: ${Number(rolo.peso_entrada_kg).toFixed(1)} kg`,
-        `Bitola: ${bitolaTxt}`,
-        `Fornecedor: ${rolo.fornecedor || '-'}`,
-        `Operador: ${operadorTxt}`,
-        `Data: ${dataCurta(rolo.data_entrada)}`,
-      ].join('\n')
-    : numeroTxt;
+  // O QR guarda só o número sequencial — escanear (ou digitar esse número na mão)
+  // busca o registro ao vivo no banco (peso atual/status atualizados, não um retrato
+  // congelado do momento da entrada). O código interno RL-... continua existindo só
+  // como chave técnica no banco, sem aparecer mais na etiqueta.
+  const qrPayload = numeroTxt;
 
-  const pesoDestaque = `<div class="etq-peso-destaque">${Number(rolo.peso_entrada_kg).toFixed(1)}<span class="etq-peso-unidade"> kg</span></div>`;
+  const pesoDestaque = `<div class="etq-peso-destaque">${Number(rolo.peso_entrada_kg || 0).toFixed(1)}<span class="etq-peso-unidade"> kg</span></div>`;
 
   renderEtiquetaComQr(qrPayload, numeroTxt, [
-    ['Bitola', bitolaTxt],
+    [`<span class="etq-bitola-grande">Bitola</span>`, `<span class="etq-bitola-grande">${bitolaTxt}</span>`],
     ['Lote', loteTxt],
     ['Fornecedor', rolo.fornecedor || '-'],
     ['Operador', operadorTxt],
