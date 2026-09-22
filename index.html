@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitalbor · Corte de Arame</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+:root{
+  /* fundos */
+  --bg:#0a0f0c;
+  --bg2:#0c1117;
+  --bg3:#111820;
+
+  /* superfícies */
+  --surf:#131c26;
+  --surf2:#1a2535;
+  --surf3:#1f2d3d;
+
+  /* bordas */
+  --bdr:#1e2d3d;
+  --bdr2:#253347;
+
+  /* texto */
+  --text:#eef2ef;
+  --text2:#8fa8be;
+  --text3:#4a6378;
+
+  /* marca */
+  --accent:#00833E;
+  --accent2:#00642F;
+
+  /* semânticas fixas */
+  --green:#16A34A;   --green2:#006A34;
+  --amber:#FBBF24;   --amber2:#d97706;
+  --red:#DC2626;
+  --blue:#2563EB;
+  --purple:#a78bfa;
+  --rose:#f43f5e;
+
+  --r:12px;
+  --sh:0 2px 8px rgba(0,0,0,.4);
+  --sh-md:0 4px 20px rgba(0,0,0,.5);
+  --sh-lg:0 8px 40px rgba(0,0,0,.6);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--text)}
+
+/* ===== Banner de configuração (não é toast — fica fixo no topo) ===== */
+#config-banner{
+  display:none; background:rgba(251,191,36,.08); border-bottom:1px solid var(--amber);
+  color:#fcd34d; padding:10px 22px; font-size:12px; font-weight:600; text-align:center;
+}
+
+/* ===== Estrutura de tela ===== */
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+.content{flex:1;padding:26px 22px 48px;max-width:800px;margin:0 auto;width:100%;position:relative;z-index:1}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+@media(max-width:600px){ .row2,.row3{grid-template-columns:1fr} }
+
+/* ===== Nav bar ===== */
+.nav{
+  position:sticky;top:0;z-index:200;background:rgba(6,10,15,.9);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:12px;
+  padding:0 22px;height:56px;flex-shrink:0;
+}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:blink 2.5s infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+.nav-brand{font-size:12px;font-weight:800;letter-spacing:.3px;color:var(--text);white-space:nowrap}
+.nav-spacer{flex:1}
+.nav-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;white-space:nowrap}
+.nav-back{display:flex;align-items:center;gap:5px;background:var(--surf2);border:1px solid var(--bdr2);
+  color:var(--text2);padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.nav-back svg{width:13px;height:13px}
+
+/* ===== Gate (tela inicial) ===== */
+.gate-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  max-width:540px;margin:0 auto;width:100%;padding:32px 22px;text-align:center}
+.gate-logo{width:56px;height:56px;margin-bottom:16px;border-radius:14px;overflow:hidden}
+.gate-logo img{width:100%;height:100%;object-fit:contain;display:block}
+.gate-logo-fallback{background:var(--surf);border:1px solid var(--bdr)}
+.gate-brand{font-size:24px;font-weight:800;letter-spacing:.2px}
+.gate-sub{font-size:12px;color:var(--text2);margin-top:8px;margin-bottom:30px}
+.gate-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;width:100%}
+.gate-card{background:var(--surf);border:1px solid var(--bdr);border-radius:14px;
+  padding:26px 14px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;
+  cursor:pointer;transition:all .2s}
+.gate-card:hover,.gate-card:focus-visible{transform:translateY(-3px);outline:none}
+.gate-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.gc-name{font-size:13px;font-weight:700}
+.gc-desc{font-size:11px;color:var(--text2);margin-top:3px;line-height:1.4}
+.gc-accent .gate-icon{background:rgba(0,131,62,.1);color:var(--accent)}
+.gc-accent:hover{border-color:var(--accent)}
+.gc-blue .gate-icon{background:rgba(37,99,235,.1);color:var(--blue)}
+.gc-blue:hover{border-color:var(--blue)}
+.gc-purple .gate-icon{background:rgba(167,139,250,.1);color:var(--purple)}
+.gc-purple:hover{border-color:var(--purple)}
+.gc-amber .gate-icon{background:rgba(251,191,36,.1);color:var(--amber)}
+.gc-amber:hover{border-color:var(--amber)}
+.gate-cards .gate-card:nth-child(4){grid-column:1 / span 3;flex-direction:row;text-align:left;
+  justify-content:flex-start;gap:16px;padding:16px 18px}
+.gate-cards .gate-card:nth-child(4) .gate-icon{margin-bottom:0;width:48px;height:48px;flex-shrink:0}
+@media(max-width:600px){
+  .gate-cards{grid-template-columns:1fr 1fr}
+  .gate-cards .gate-card:nth-child(4){grid-column:1 / span 2}
+}
+.gate-admin{margin-top:26px;display:flex;align-items:center;gap:8px;background:rgba(220,38,38,.06);
+  border:1px solid rgba(220,38,38,.3);color:#f2a4a4;padding:10px 18px;border-radius:999px;
+  font-size:12px;font-weight:700;cursor:pointer}
+.gate-admin svg{width:14px;height:14px}
+
+/* ===== Menu card (dentro de um setor) ===== */
+.menu-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.menu-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+@media(max-width:600px){ .menu-grid-3{grid-template-columns:1fr} }
+.menu-card{background:var(--surf);border:1px solid var(--bdr);border-radius:13px;padding:22px 14px 18px;
+  display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;transition:all .15s}
+.menu-card:hover,.menu-card:focus-visible{border-color:var(--bdr2);background:var(--surf2);transform:translateY(-2px);outline:none}
+.mc-icon{width:52px;height:52px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;
+  background:rgba(0,131,62,.1);color:var(--accent)}
+.mc-name{font-size:13px;font-weight:700}
+.mc-desc{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* ===== fbox (painel/card de conteúdo) ===== */
+.fbox{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:18px;margin-bottom:16px}
+.fbox h4{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);
+  border-left:3px solid var(--accent);padding-left:8px;margin-bottom:16px}
+
+/* ===== Formulário ===== */
+.field{margin-bottom:11px}
+label{display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:5px}
+input.i,select.i,textarea.i,input,select,textarea{
+  display:block;width:100%;padding:11px 13px;font-size:13px;font-weight:500;font-family:inherit;
+  background:var(--bg3);border:1px solid var(--bdr);border-radius:8px;color:var(--text);
+  transition:border-color .12s,box-shadow .12s;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,131,62,.15)}
+
+/* select com seta custom */
+select{appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238fa8be' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:16px;padding-right:36px}
+
+/* ===== Zona de bipagem ===== */
+.scan-zone{background:var(--bg2);border:1px solid var(--bdr);border-radius:13px;padding:22px 18px;text-align:center;margin-bottom:16px}
+.scan-inp{width:100%;padding:14px 18px;font-size:18px;font-weight:700;text-align:center;letter-spacing:3px;
+  background:var(--bg3);border:1px solid var(--bdr);border-radius:9px;color:var(--text)}
+.scan-inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,131,62,.15)}
+.scan-zone .hint{margin-top:12px}
+
+/* ===== Botões ===== */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+  padding:12px 18px;font-size:13px;font-weight:700;font-family:inherit;border:none;border-radius:9px;cursor:pointer;transition:all .15s}
+.btn svg{width:16px;height:16px;flex-shrink:0}
+.btn-accent{background:var(--accent);color:#fff;box-shadow:0 0 18px rgba(0,131,62,.25)}
+.btn-accent:hover{background:var(--accent2)}
+.btn-green{background:var(--green);color:#000;box-shadow:0 0 18px rgba(22,163,74,.2)}
+.btn-amber{background:var(--amber);color:#000;box-shadow:0 0 18px rgba(251,191,36,.2)}
+.btn-rose{background:var(--rose);color:#fff;box-shadow:0 0 18px rgba(244,63,94,.2)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--bdr2);box-shadow:none}
+.btn-ghost:hover{border-color:var(--text2);color:var(--text)}
+.btn-danger{background:rgba(220,38,38,.1);color:var(--red);border:1px solid rgba(220,38,38,.25);box-shadow:none}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn-sm{width:auto!important;padding:8px 15px!important;font-size:12px!important}
+.btn-row{display:flex;gap:10px}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.hint{font-size:11.5px;color:var(--text3)}
+
+.estimate-box{background:rgba(0,131,62,.08);border:1px solid var(--accent2);border-radius:9px;
+  padding:12px 14px;margin-bottom:14px;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.estimate-box strong{color:#4cbf7a;font-size:15px}
+
+/* ===== Alertas inline ===== */
+.alert{padding:11px 13px;border-radius:8px;font-size:12px;font-weight:500;margin:9px 0;border:1px solid;display:none}
+.alert.show{display:block}
+.alert-err{background:rgba(220,38,38,.07);color:#fca5a5;border-color:rgba(220,38,38,.22)}
+.alert-ok{background:rgba(22,163,74,.07);color:#6ee7b7;border-color:rgba(22,163,74,.18)}
+.alert-info{background:rgba(37,99,235,.07);color:#93c5fd;border-color:rgba(37,99,235,.18)}
+.alert-warn{background:rgba(251,191,36,.07);color:#fcd34d;border-color:rgba(251,191,36,.18)}
+
+/* ===== Linhas de lista / info-card ===== */
+.row-item{display:flex;justify-content:space-between;align-items:center;padding:11px 2px;border-bottom:1px solid rgba(30,45,61,.5);font-size:13px}
+.row-item:last-child{border-bottom:none}
+.row-item .dim{color:var(--text3)}
+.row-item-actions{display:flex;align-items:center;gap:12px}
+.empty{color:var(--text3);font-size:13px;padding:14px 2px}
+
+/* ===== Badges ===== */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:600;border:1px solid}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%}
+.b-sep{background:rgba(167,139,250,.1);color:var(--purple);border-color:rgba(167,139,250,.22)}
+.b-sep::before{background:var(--purple)}
+.b-fora{background:rgba(251,191,36,.1);color:var(--amber);border-color:rgba(251,191,36,.22)}
+.b-fora::before{background:var(--amber)}
+.b-dev{background:rgba(37,99,235,.1);color:var(--blue);border-color:rgba(37,99,235,.22)}
+.b-dev::before{background:var(--blue)}
+.b-conf{background:rgba(22,163,74,.08);color:var(--green);border-color:rgba(22,163,74,.22)}
+.b-conf::before{background:var(--green)}
+.b-excl{background:rgba(220,38,38,.08);color:var(--red);border-color:rgba(220,38,38,.22)}
+.b-excl::before{background:var(--red)}
+.b-rep{background:rgba(244,63,94,.1);color:var(--rose);border-color:rgba(244,63,94,.22)}
+.b-rep::before{background:var(--rose)}
+
+/* ===== Tabela ===== */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 9px;font-size:9px;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--text3);font-weight:700;background:var(--bg3);border-bottom:1px solid var(--bdr)}
+td{padding:9px 9px;border-bottom:1px solid rgba(30,45,61,.5);color:var(--text2)}
+tr:hover td{background:rgba(0,131,62,.02);color:var(--text)}
+td.mono{color:var(--accent);font-size:10px;font-family:monospace}
+td.actions-cell{display:flex;gap:12px}
+.link-btn{background:none;border:none;color:#4cbf7a;cursor:pointer;font-size:12px;padding:0;font-family:inherit;font-weight:600}
+.link-btn.danger{color:#f2a4a4}
+
+/* ===== Resultado (tela cheia) ===== */
+.result-ok{text-align:center;padding:36px 18px;max-width:420px;margin:0 auto}
+.r-icon{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.r-icon svg{width:32px;height:32px}
+.ri-g{background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.22);box-shadow:0 0 28px rgba(22,163,74,.12);color:var(--green)}
+.ri-c{background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.22);box-shadow:0 0 28px rgba(37,99,235,.12);color:var(--blue)}
+.ri-r{background:rgba(244,63,94,.08);border:1px solid rgba(244,63,94,.22);box-shadow:0 0 28px rgba(244,63,94,.12);color:var(--rose)}
+.result-ok h2{font-size:18px;font-weight:800;margin-bottom:8px}
+.result-ok p{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.5}
+.result-actions{display:flex;flex-direction:column;gap:10px}
+
+/* ===== Admin: tabs + painéis ===== */
+.admin-bar{display:flex;gap:2px;padding:0 22px;background:rgba(6,10,15,.9);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--bdr);overflow-x:auto}
+.admin-tab{flex-shrink:0;padding:13px 14px;font-size:10px;font-weight:600;color:var(--text3);
+  border:none;background:transparent;font-family:inherit;text-transform:uppercase;letter-spacing:.8px;
+  border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+.admin-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.admin-panel{display:none}
+.admin-panel.on{display:block}
+
+/* ===== Modal (login/confirmação) ===== */
+.login-overlay{position:fixed;inset:0;z-index:500;background:rgba(6,10,15,.88);backdrop-filter:blur(14px);
+  display:none;align-items:center;justify-content:center;padding:20px}
+.login-overlay.open{display:flex}
+.login-modal{background:var(--surf);border:1px solid var(--bdr2);border-radius:18px;padding:32px;
+  width:100%;max-width:360px;box-shadow:0 24px 64px rgba(0,0,0,.7);text-align:center}
+.login-modal h3{font-size:16px;font-weight:800;margin-bottom:6px}
+.login-modal .login-sub{font-size:12px;color:var(--text2);margin-bottom:20px}
+.login-inp{width:100%;padding:13px 16px;font-size:22px;font-weight:700;background:var(--bg3);
+  border:1px solid var(--bdr2);border-radius:10px;color:var(--text);text-align:center;letter-spacing:6px}
+.login-inp:focus{outline:none;border-color:var(--accent)}
+.login-actions{display:flex;gap:10px;margin-top:18px}
+
+/* ===== Scanner de câmera ===== */
+.scanner-overlay{position:fixed;inset:0;background:rgba(6,10,15,.9);display:none;
+  align-items:center;justify-content:center;z-index:480;padding:20px}
+.scanner-overlay.open{display:flex}
+.scanner-box{background:var(--surf);border:1px solid var(--bdr2);border-radius:16px;
+  padding:20px;width:100%;max-width:380px;text-align:center;box-shadow:var(--sh-lg)}
+.scanner-box h4{margin:0 0 14px;font-size:13px;color:var(--text2);font-weight:700}
+.scanner-box #scanner-reader{margin-bottom:14px;border-radius:9px;overflow:hidden}
+
+/* ===== Etiqueta impressa (preto sobre branco, 70x50mm) ===== */
+.label-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;
+  align-items:center;justify-content:center;z-index:460;padding:20px}
+.label-overlay.open{display:flex}
+.etq-wrap{background:#fff;border-radius:8px;padding:10px}
+.etq{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;
+  width:70mm;height:50mm;padding:1.5mm 2mm 1mm;display:flex;flex-direction:column;overflow:hidden}
+.etq-top{display:flex;justify-content:space-between;align-items:baseline;font-size:7pt}
+.etq-top strong{font-size:8pt}
+.etq-div{height:1px;background:#000;margin:.8mm 0}
+.etq-body{display:flex;gap:2mm;flex:1}
+.etq-tbl{width:100%;border-collapse:collapse;font-size:5.5pt;color:#000}
+.etq-tbl td{padding:1mm 0;border:none}
+.etq-tbl td:first-child{font-weight:900;white-space:nowrap;padding-right:2mm}
+.etq-qr{display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.etq-qr canvas{width:22mm!important;height:22mm!important;image-rendering:pixelated}
+.etq-code{font-family:monospace;font-size:5pt;text-align:center;letter-spacing:1px;margin-top:.5mm}
+.etq-toolbar{display:flex;gap:10px;justify-content:center;margin-top:16px}
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body *{visibility:hidden}
+  .etq-wrap,.etq-wrap *{visibility:visible}
+  .etq-wrap{position:fixed;top:0;left:0;margin:0;padding:0;border-radius:0}
+  .etq-toolbar,.nav{display:none!important}
+  @page{size:70mm 50mm;margin:0}
+}
+</style>
+</head>
+<body>
+
+<div id="config-banner">⚠️ Configure SUPABASE_URL e SUPABASE_ANON_KEY no início do &lt;script&gt; antes de usar este arquivo.</div>
+
+<!-- LOGIN (admin) -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-modal">
+    <h3>Acesso restrito</h3>
+    <p class="login-sub">Digite a senha de administrador</p>
+    <input type="password" class="login-inp" id="login-pin" inputmode="numeric" autocomplete="off"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarLogin();}">
+    <div class="alert alert-err" id="login-alert"></div>
+    <div class="login-actions">
+      <button class="btn btn-ghost" type="button" onclick="fecharLogin()">Cancelar</button>
+      <button class="btn btn-accent" type="button" onclick="confirmarLogin()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ETIQUETA (impressão) -->
+<div class="label-overlay" id="label-overlay">
+  <div>
+    <div class="etq-wrap"><div class="etq" id="label-content"></div></div>
+    <div class="etq-toolbar">
+      <button class="btn btn-accent btn-sm" onclick="imprimirEtiqueta()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18h12v4H6z"/><rect x="4" y="9" width="16" height="8" rx="1"/></svg>
+        Imprimir
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="fecharEtiqueta()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCANNER (câmera) -->
+<div class="scanner-overlay" id="scanner-overlay">
+  <div class="scanner-box">
+    <h4>Aponte a câmera pra etiqueta</h4>
+    <div id="scanner-reader"></div>
+    <button class="btn btn-ghost btn-sm" onclick="pararScanner()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ======================= GATE ======================= -->
+<div class="screen active" id="screen-gate">
+  <div class="gate-wrap">
+    <div class="gate-logo">
+      <img src="assets/logo.png" alt="Vitalbor" onerror="this.style.display='none'; this.parentElement.classList.add('gate-logo-fallback');">
+    </div>
+    <div class="gate-brand">CORTE DE ARAME</div>
+    <p class="gate-sub">Controle de Produção e Estoque</p>
+
+    <div class="gate-cards">
+      <div class="gate-card gc-accent" tabindex="0" role="button" onclick="showScreen('screen-producao')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-producao');}">
+        <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.1"/><circle cx="6" cy="18" r="2.1"/><path d="M20 4L8.3 15.7"/><path d="M8.3 8.3L20 20"/></svg></div>
+        <div class="gc-name">Produção</div>
+        <div class="gc-desc">Apontar peças cortadas</div>
+      </div>
+      <div class="gate-card gc-blue" tabindex="0" role="button" onclick="showScreen('screen-mov-menu')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-mov-menu');}">
+        <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 20V4"/><path d="M5 7l3-3 3 3"/><path d="M16 4v16"/><path d="M13 17l3 3 3-3"/></svg></div>
+        <div class="gc-name">Movimentação</div>
+        <div class="gc-desc">Entrada e saída de rolos</div>
+      </div>
+      <div class="gate-card gc-purple" tabindex="0" role="button" onclick="showScreen('screen-estoque')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-estoque');}">
+        <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="10" height="10" rx="1.5"/><rect x="10" y="4" width="10" height="10" rx="1.5"/></svg></div>
+        <div class="gc-name">Estoque</div>
+        <div class="gc-desc">Rolos e caixas de arame</div>
+      </div>
+      <div class="gate-card gc-amber" tabindex="0" role="button" onclick="showScreen('screen-etiqueta')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-etiqueta');}">
+        <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l8-8h6a2 2 0 012 2v6l-8 8a2 2 0 01-2.8 0l-5.2-5.2a2 2 0 010-2.8z"/><circle cx="14.5" cy="9.5" r="1.3"/></svg></div>
+        <div class="gc-name">Gerar etiqueta</div>
+        <div class="gc-desc">Etiqueta de rolos de arame, avulsa ou reimpressão</div>
+      </div>
+    </div>
+
+    <button class="gate-admin" onclick="abrirLoginAdmin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+      Admin
+    </button>
+  </div>
+</div>
+
+<!-- ======================= PRODUÇÃO ======================= -->
+<div class="screen" id="screen-producao">
+  <div class="nav">
+    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
+    <span class="nav-title">Produção</span><span class="nav-spacer"></span>
+    <button class="nav-back" onclick="showScreen('screen-gate')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Início
+    </button>
+  </div>
+  <div class="content">
+
+    <div id="producao-form-view">
+      <div class="fbox">
+        <h4>Apontamento de produção</h4>
+        <form id="form-producao" onsubmit="registrarProducao(event)">
+          <div class="row2">
+            <div class="field"><label>Rolo utilizado</label><select id="pr-rolo" required></select></div>
+            <div class="field"><label>Peça</label><select id="pr-peca" required onchange="atualizarPesoEstimado()"></select></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Quantidade produzida</label><input type="number" min="0" id="pr-quantidade" required oninput="atualizarPesoEstimado()"></div>
+            <div class="field"><label>Quantidade de refugo</label><input type="number" min="0" id="pr-refugo" value="0" oninput="atualizarPesoEstimado()"></div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Operador</label><input type="text" id="pr-operador"></div>
+            <div class="field"><label>Turno</label>
+              <select id="pr-turno"><option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option></select>
+            </div>
+          </div>
+          <div class="estimate-box"><span>Peso estimado consumido do rolo</span><strong id="pr-peso-estimado">0.000 kg</strong></div>
+          <p class="hint" style="margin-bottom:14px;display:block;">O peso considera peças boas + refugo, pois ambos foram cortados do rolo.</p>
+          <div class="alert alert-err" id="alerta-producao"></div>
+          <button class="btn btn-accent" type="submit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+            Registrar produção
+          </button>
+        </form>
+      </div>
+
+      <div class="fbox">
+        <h4>Últimos apontamentos</h4>
+        <div id="lista-historico-producao"><div class="empty">Configure o Supabase para carregar esta lista.</div></div>
+      </div>
+    </div>
+
+    <div id="producao-result-view" style="display:none;">
+      <div class="result-ok">
+        <div class="r-icon ri-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></div>
+        <h2 id="pr-result-titulo">Produção registrada</h2>
+        <p id="pr-result-sub"></p>
+        <div class="result-actions">
+          <button class="btn btn-accent" onclick="resetProducaoForm()">Novo registro</button>
+          <button class="btn btn-ghost" onclick="showScreen('screen-gate')">Início</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ======================= MOVIMENTAÇÃO — MENU ======================= -->
+<div class="screen" id="screen-mov-menu">
+  <div class="nav">
+    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
+    <span class="nav-title">Movimentação</span><span class="nav-spacer"></span>
+    <button class="nav-back" onclick="showScreen('screen-gate')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Início
+    </button>
+  </div>
+  <div class="content">
+    <div class="menu-grid-3">
+      <div class="menu-card" tabindex="0" role="button" onclick="showScreen('screen-mov-escanear')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-mov-escanear');}">
+        <div class="mc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l8-8h6a2 2 0 012 2v6l-8 8a2 2 0 01-2.8 0l-5.2-5.2a2 2 0 010-2.8z"/><circle cx="14.5" cy="9.5" r="1.3"/></svg></div>
+        <div class="mc-name">Escanear</div>
+        <div class="mc-desc">Consultar um rolo</div>
+      </div>
+      <div class="menu-card" tabindex="0" role="button" onclick="showScreen('screen-mov-entrada')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-mov-entrada');}">
+        <div class="mc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="M6 11l6 6 6-6"/></svg></div>
+        <div class="mc-name">Entrada</div>
+        <div class="mc-desc">Cadastrar rolo novo</div>
+      </div>
+      <div class="menu-card" tabindex="0" role="button" onclick="showScreen('screen-mov-saida')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-mov-saida');}">
+        <div class="mc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V8"/><path d="M6 13l6-6 6 6"/></svg></div>
+        <div class="mc-name">Saída</div>
+        <div class="mc-desc">Baixa manual de rolo</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MOVIMENTAÇÃO — ESCANEAR ======================= -->
+<div class="screen" id="screen-mov-escanear">
+  <div class="nav">
+    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
+    <span class="nav-title">Escanear</span><span class="nav-spacer"></span>
+    <button class="nav-back" onclick="showScreen('screen-mov-menu')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Voltar
+    </button>
+  </div>
+  <div class="content">
+    <div class="scan-zone">
+      <label>Bipe ou digite o lote do rolo</label>
+      <input type="text" class="scan-inp" id="mov-escanear-input" autocomplete="off"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();onScanConsultaSucesso(this.value);this.value='';}">
+      <p class="hint" style="margin-top:12px;display:block;">Leitor de código de barras/QR digita aqui automaticamente. Sem leitor à mão:</p>
+      <button class="btn btn-ghost btn-sm" type="button" style="margin-top:10px;" onclick="abrirScannerConsulta()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+        Usar câmera
+      </button>
+    </div>
+
+    <div class="fbox">
+      <h4>Resultado</h4>
+      <div id="consulta-resultado"><div class="empty">Nenhum rolo escaneado ainda.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MOVIMENTAÇÃO — ENTRADA ======================= -->
+<div class="screen" id="screen-mov-entrada">
+  <div class="nav">
+    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
+    <span class="nav-title">Entrada de rolo</span><span class="nav-spacer"></span>
+    <button class="nav-back" onclick="showScreen('screen-mov-menu')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Voltar
+    </button>
+  </div>
+  <div class="content">
+
+    <div id="mov-entrada-form-view">
+      <div class="fbox">
+        <h4>Registrar entrada</h4>
+        <form id="form-entrada-rolo" onsubmit="registrarEntradaRolo(event)">
+          <div class="row2">
+            <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" id="er-peso" required></div>
+            <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="er-fornecedor"></div>
+          </div>
+          <div class="field"><label>Observações (opcional)</label><textarea id="er-obs" rows="2"></textarea></div>
+          <div class="alert alert-err" id="alerta-entrada"></div>
+          <button class="btn btn-accent" type="submit">Registrar entrada e gerar etiqueta</button>
+        </form>
+      </div>
+
+      <div class="fbox">
+        <h4>Só gerar etiqueta (sem salvar)</h4>
+        <form id="form-etiqueta-avulsa-mov" onsubmit="gerarEtiquetaAvulsa(event)">
+          <div class="row2">
+            <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" id="ge-peso-mov" required></div>
+            <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="ge-fornecedor-mov"></div>
+          </div>
+          <button class="btn btn-ghost" type="submit">Gerar etiqueta</button>
+          <p class="hint" style="margin-top:8px;display:block;">Não grava no banco — só pra imprimir na hora.</p>
+        </form>
+      </div>
+    </div>
+
+    <div id="mov-entrada-result-view" style="display:none;">
+      <div class="result-ok">
+        <div class="r-icon ri-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></div>
+        <h2>Rolo cadastrado</h2>
+        <p id="er-result-sub"></p>
+        <div class="result-actions">
+          <button class="btn btn-accent" onclick="resetEntradaForm()">Novo registro</button>
+          <button class="btn btn-ghost" onclick="showScreen('screen-mov-menu')">Menu</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ======================= MOVIMENTAÇÃO — SAÍDA ======================= -->
+<div class="screen" id="screen-mov-saida">
+  <div class="nav">
+    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
+    <span class="nav-title">Saída de rolo</span><span class="nav-spacer"></span>
+    <button class="nav-back" onclick="showScreen('screen-mov-menu')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Voltar
+    </button>
+  </div>
+  <div class="content">
+
+    <div id="mov-saida-form-view">
+      <div class="scan-zone">
+        <label>Bipe o lote pra selecionar o rolo</label>
+        <input type="text" class="scan-inp" id="mov-saida-scan-input" autocomplete="off"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();onScanSaidaSucesso(this.value);this.value='';}">
+        <button class="btn btn-ghost btn-sm" type="button" style="margin-top:12px;" onclick="abrirScannerSaida()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/></svg>
+          Usar câmera
+        </button>
+      </div>
+
+      <div class="fbox">
+        <h4>Baixa manual</h4>
+        <form id="form-saida-rolo" onsubmit="registrarSaidaRolo(event)">
+          <div class="field"><label>Rolo</label><select id="sr-rolo" required></select></div>
+          <div class="row2">
+            <div class="field"><label>Peso a dar baixa (kg)</label><input type="number" step="0.01" id="sr-peso" required></div>
+            <div class="field"><label>Motivo</label><input type="text" id="sr-motivo" placeholder="transferência, perda, ajuste"></div>
+          </div>
+          <div class="alert alert-err" id="alerta-saida"></div>
+          <button class="btn btn-accent" type="submit">Registrar saída</button>
+        </form>
+      </div>
+
+      <div class="fbox">
+        <h4>Rolos ativos</h4>
+        <div id="lista-rolos-mov"><div class="empty">Configure o Supabase para carregar esta lista.</div></div>
+      </div>
+    </div>
+
+    <div id="mov-saida-result-view" style="display:none;">
+      <div class="result-ok">
+        <div class="r-icon ri-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></div>
+        <h2>Saída registrada</h2>
+        <p id="sr-result-sub"></p>
+        <div class="result-actions">
+          <button class="btn btn-accent" onclick="resetSaidaForm()">Novo registro</button>
+          <button class="btn btn-ghost" onclick="showScreen('screen-mov-menu')">Menu</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ======================= ESTOQUE ======================= -->
+<div class="screen" id="screen-estoque">
+  <div class="nav">
+    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
+    <span class="nav-title">Estoque</span><span class="nav-spacer"></span>
+    <button class="nav-back" onclick="showScreen('screen-gate')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Início
+    </button>
+  </div>
+  <div class="content">
+    <div class="row2">
+      <div class="fbox">
+        <h4>Rolos de arame</h4>
+        <div id="lista-estoque-rolos"><div class="empty">Configure o Supabase para carregar esta lista.</div></div>
+      </div>
+      <div class="fbox">
+        <h4>Caixas de arame</h4>
+        <p class="hint" style="margin-bottom:10px;display:block;">Gerada a partir dos apontamentos de produção.</p>
+        <div id="lista-estoque-caixas"><div class="empty">Configure o Supabase para carregar esta lista.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= GERAR ETIQUETA ======================= -->
+<div class="screen" id="screen-etiqueta">
+  <div class="nav">
+    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
+    <span class="nav-title">Gerar etiqueta</span><span class="nav-spacer"></span>
+    <button class="nav-back" onclick="showScreen('screen-gate')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Início
+    </button>
+  </div>
+  <div class="content">
+    <div class="fbox">
+      <h4>Etiqueta avulsa (sem salvar no estoque)</h4>
+      <form id="form-etiqueta-avulsa" onsubmit="gerarEtiquetaAvulsa(event)">
+        <div class="row2">
+          <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" id="ge-peso" required></div>
+          <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="ge-fornecedor"></div>
+        </div>
+        <button class="btn btn-accent" type="submit">Gerar etiqueta</button>
+      </form>
+    </div>
+    <div class="fbox">
+      <h4>Reimprimir etiqueta de um rolo já cadastrado</h4>
+      <div id="lista-rolos-etiqueta"><div class="empty">Configure o Supabase para carregar esta lista.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= ADMIN ======================= -->
+<div class="screen" id="screen-admin">
+  <div class="nav">
+    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
+    <span class="nav-title">Administração</span><span class="nav-spacer"></span>
+    <button class="nav-back" onclick="showScreen('screen-gate')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Sair
+    </button>
+  </div>
+  <div class="admin-bar">
+    <button class="admin-tab on" data-tab="admin-pecas" onclick="mudarAdminTab('admin-pecas')">Peças</button>
+    <button class="admin-tab" data-tab="admin-config" onclick="mudarAdminTab('admin-config')">Configuração</button>
+  </div>
+  <div class="content">
+    <div class="admin-panel on" data-panel="admin-pecas">
+      <div class="fbox">
+        <h4>Cadastrar peça</h4>
+        <form id="form-add-peca" onsubmit="adicionarPeca(event)">
+          <div class="row2">
+            <div class="field"><label>Nome da peça</label><input type="text" id="ap-nome" required></div>
+            <div class="field"><label>Código (opcional)</label><input type="text" id="ap-codigo"></div>
+          </div>
+          <div class="field"><label>Peso unitário (gramas)</label><input type="number" step="0.001" id="ap-peso" required></div>
+          <div class="alert alert-err" id="alerta-add-peca"></div>
+          <div class="alert alert-ok" id="alerta-add-peca-ok"></div>
+          <button class="btn btn-accent" type="submit">Cadastrar peça</button>
+        </form>
+      </div>
+      <div class="fbox">
+        <h4>Peças cadastradas</h4>
+        <table>
+          <thead><tr><th>Nome</th><th>Código</th><th>Peso (g)</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tabela-pecas"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="admin-panel" data-panel="admin-config">
+      <div class="fbox">
+        <h4>Configuração de estoque</h4>
+        <form id="form-config" onsubmit="salvarConfig(event)">
+          <div class="field"><label>Peso mínimo do rolo (kg) — abaixo disso, o estoque passa a constar como zero</label><input type="number" step="0.1" id="ac-limite" required></div>
+          <div class="alert alert-err" id="alerta-config"></div>
+          <div class="alert alert-ok" id="alerta-config-ok"></div>
+          <button class="btn btn-accent" type="submit">Salvar configuração</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== CONFIGURAÇÃO ===================== */
+const SUPABASE_URL = "COLOQUE_AQUI_SUA_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "COLOQUE_AQUI_SUA_ANON_KEY";
+const ADMIN_PASSWORD = "trocar123"; // trava simples de tela — não é segurança real
+
+let sb = null;
+if (SUPABASE_URL.startsWith("http")) {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+  document.addEventListener('DOMContentLoaded', () => { qs('#config-banner').style.display = 'block'; });
+}
+
+/* ===================== HELPERS ===================== */
+const qs = s => document.querySelector(s);
+const pad = (n, len = 3) => String(n).padStart(len, '0');
+function hojeStr() {
+  const d = new Date();
+  return `${d.getFullYear()}${pad(d.getMonth() + 1, 2)}${pad(d.getDate(), 2)}`;
+}
+function dataCurta(iso) {
+  const d = new Date(iso || Date.now());
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+function setAlerta(id, tipo, msg) {
+  const el = qs('#' + id);
+  if (!el) return;
+  if (!msg) { el.classList.remove('show'); el.textContent = ''; return; }
+  el.className = 'alert alert-' + tipo + ' show';
+  el.textContent = msg;
+}
+function limparAlertas(...ids) { ids.forEach(id => setAlerta(id, null, null)); }
+function checarSb() {
+  if (!sb) return false;
+  return true;
+}
+
+/* ===================== NAVEGAÇÃO ===================== */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+
+  if (id === 'screen-mov-saida') { loadRolosAtivos(); }
+  if (id === 'screen-etiqueta') { loadRolosAtivos(); }
+  if (id === 'screen-producao') { loadRolosAtivos(); loadPecas(); loadHistoricoProducao(); }
+  if (id === 'screen-estoque') { loadEstoque(); }
+
+  setTimeout(() => {
+    if (id === 'screen-mov-escanear') { const el = qs('#mov-escanear-input'); if (el) el.focus(); }
+    if (id === 'screen-mov-saida') { const el = qs('#mov-saida-scan-input'); if (el) el.focus(); }
+  }, 60);
+}
+
+/* ===================== LOGIN ADMIN ===================== */
+function abrirLoginAdmin() {
+  qs('#login-pin').value = '';
+  setAlerta('login-alert', null, null);
+  qs('#login-overlay').classList.add('open');
+  setTimeout(() => qs('#login-pin').focus(), 50);
+}
+function fecharLogin() { qs('#login-overlay').classList.remove('open'); }
+function confirmarLogin() {
+  if (qs('#login-pin').value !== ADMIN_PASSWORD) { setAlerta('login-alert', 'err', 'Senha incorreta'); return; }
+  fecharLogin();
+  showScreen('screen-admin');
+  loadAdminPecas();
+  loadAdminConfig();
+}
+
+function mudarAdminTab(tab) {
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  document.querySelectorAll('.admin-panel').forEach(p => p.classList.toggle('on', p.dataset.panel === tab));
+}
+
+/* ===================== CONFIG (limite de zerar rolo) ===================== */
+async function getLimiteZerarRolo() {
+  const { data, error } = await sb.from('config').select('valor').eq('chave', 'limite_zerar_rolo_kg').single();
+  if (error || !data) return 800;
+  return Number(data.valor);
+}
+
+/* ===================== MOVIMENTAÇÃO — ENTRADA ===================== */
+async function gerarLoteRolo() {
+  const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
+  const { count } = await sb.from('rolos_arame').select('*', { count: 'exact', head: true }).gte('data_entrada', inicioDia.toISOString());
+  return `RL-${hojeStr()}-${pad((count || 0) + 1)}`;
+}
+
+async function registrarEntradaRolo(e) {
+  e.preventDefault();
+  limparAlertas('alerta-entrada');
+  if (!checarSb()) { setAlerta('alerta-entrada', 'err', 'Supabase não configurado.'); return; }
+  const peso = parseFloat(qs('#er-peso').value);
+  const fornecedor = qs('#er-fornecedor').value.trim();
+  const obs = qs('#er-obs').value.trim();
+  if (!peso || peso <= 0) { setAlerta('alerta-entrada', 'err', 'Informe um peso válido'); return; }
+
+  const lote = await gerarLoteRolo();
+  const { data, error } = await sb.from('rolos_arame').insert({
+    lote, peso_entrada_kg: peso, peso_atual_kg: peso,
+    fornecedor: fornecedor || null, observacoes: obs || null, status: 'ativo'
+  }).select().single();
+
+  if (error) { setAlerta('alerta-entrada', 'err', 'Erro ao registrar: ' + error.message); return; }
+
+  qs('#er-result-sub').textContent = `Lote ${data.lote} — ${Number(data.peso_entrada_kg).toFixed(1)} kg`;
+  qs('#mov-entrada-form-view').style.display = 'none';
+  qs('#mov-entrada-result-view').style.display = 'block';
+  abrirEtiquetaRolo(data);
+}
+function resetEntradaForm() {
+  qs('#form-entrada-rolo').reset();
+  limparAlertas('alerta-entrada');
+  qs('#mov-entrada-result-view').style.display = 'none';
+  qs('#mov-entrada-form-view').style.display = 'block';
+}
+
+function gerarEtiquetaAvulsa(e) {
+  e.preventDefault();
+  const pesoInp = e.target.querySelector('input[type="number"]');
+  const fornInp = e.target.querySelector('input[type="text"]');
+  const peso = parseFloat(pesoInp.value);
+  const fornecedor = fornInp.value.trim();
+  if (!peso || peso <= 0) { alert('Informe o peso do rolo antes de gerar a etiqueta'); return; }
+  abrirEtiquetaRolo({ lote: `RL-${hojeStr()}-PRÉVIA`, peso_entrada_kg: peso, fornecedor, data_entrada: new Date().toISOString() });
+}
+
+/* ===================== MOVIMENTAÇÃO — SAÍDA ===================== */
+async function registrarSaidaRolo(e) {
+  e.preventDefault();
+  limparAlertas('alerta-saida');
+  if (!checarSb()) { setAlerta('alerta-saida', 'err', 'Supabase não configurado.'); return; }
+  const roloId = qs('#sr-rolo').value;
+  const peso = parseFloat(qs('#sr-peso').value);
+  const motivo = qs('#sr-motivo').value.trim();
+  if (!roloId) { setAlerta('alerta-saida', 'err', 'Selecione um rolo'); return; }
+  if (!peso || peso <= 0) { setAlerta('alerta-saida', 'err', 'Informe um peso válido'); return; }
+
+  const { data: rolo, error: e1 } = await sb.from('rolos_arame').select('*').eq('id', roloId).single();
+  if (e1) { setAlerta('alerta-saida', 'err', e1.message); return; }
+
+  const limite = await getLimiteZerarRolo();
+  let novoPeso = rolo.peso_atual_kg - peso;
+  let novoStatus = rolo.status;
+  if (novoPeso < limite) { novoPeso = 0; novoStatus = 'zerado'; }
+
+  const { error: e2 } = await sb.from('rolos_arame').update({ peso_atual_kg: novoPeso, status: novoStatus }).eq('id', roloId);
+  if (e2) { setAlerta('alerta-saida', 'err', e2.message); return; }
+  await sb.from('movimentacoes_rolo').insert({ rolo_id: roloId, tipo: 'saida', peso_kg: peso, motivo: motivo || null });
+
+  qs('#sr-result-sub').textContent = `Rolo ${rolo.lote} — baixa de ${peso.toFixed(1)} kg`;
+  qs('#mov-saida-form-view').style.display = 'none';
+  qs('#mov-saida-result-view').style.display = 'block';
+}
+function resetSaidaForm() {
+  qs('#form-saida-rolo').reset();
+  limparAlertas('alerta-saida');
+  qs('#mov-saida-result-view').style.display = 'none';
+  qs('#mov-saida-form-view').style.display = 'block';
+  loadRolosAtivos();
+}
+
+let _rolosCache = {};
+function guardarRolosCache(lista) { lista.forEach(r => { _rolosCache[r.id] = r; }); }
+
+async function loadRolosAtivos() {
+  if (!sb) return;
+  const { data, error } = await sb.from('rolos_arame').select('*').eq('status', 'ativo').order('data_entrada', { ascending: false });
+  if (error) return;
+  guardarRolosCache(data);
+
+  const options = '<option value="">Selecione o rolo</option>' + data.map(r =>
+    `<option value="${r.id}">${r.lote} — restante ${Number(r.peso_atual_kg).toFixed(1)} kg</option>`).join('');
+  const selProd = qs('#pr-rolo'); if (selProd) selProd.innerHTML = options;
+  const selSaida = qs('#sr-rolo'); if (selSaida) selSaida.innerHTML = options;
+
+  const linhas = data.length ? data.map(r => `
+    <div class="row-item">
+      <div><strong>${r.lote}</strong><span class="dim"> · ${r.fornecedor || 'sem fornecedor'}</span></div>
+      <div class="row-item-actions">
+        <span>${Number(r.peso_atual_kg).toFixed(1)} kg</span>
+        <button class="link-btn" onclick="reimprimirEtiquetaRolo('${r.id}')">etiqueta</button>
+      </div>
+    </div>`).join('') : '<div class="empty">Nenhum rolo ativo</div>';
+
+  const listaMov = qs('#lista-rolos-mov'); if (listaMov) listaMov.innerHTML = linhas;
+  const listaEtq = qs('#lista-rolos-etiqueta'); if (listaEtq) listaEtq.innerHTML = linhas;
+}
+function reimprimirEtiquetaRolo(id) { const rolo = _rolosCache[id]; if (rolo) abrirEtiquetaRolo(rolo); }
+
+/* ===================== PRODUÇÃO ===================== */
+async function loadPecas() {
+  if (!sb) return;
+  const { data, error } = await sb.from('pecas').select('*').eq('ativo', true).order('nome');
+  if (error) return;
+  const sel = qs('#pr-peca');
+  if (sel) sel.innerHTML = '<option value="">Selecione a peça</option>' +
+    data.map(p => `<option value="${p.id}" data-peso="${p.peso_unitario_g}">${p.nome}</option>`).join('');
+}
+
+function atualizarPesoEstimado() {
+  const sel = qs('#pr-peca');
+  const opt = sel.options[sel.selectedIndex];
+  const pesoUnit = opt ? parseFloat(opt.dataset.peso || 0) : 0;
+  const qtd = parseInt(qs('#pr-quantidade').value || 0);
+  const refugo = parseInt(qs('#pr-refugo').value || 0);
+  qs('#pr-peso-estimado').textContent = ((pesoUnit * (qtd + refugo)) / 1000).toFixed(3) + ' kg';
+}
+
+async function registrarProducao(e) {
+  e.preventDefault();
+  limparAlertas('alerta-producao');
+  if (!checarSb()) { setAlerta('alerta-producao', 'err', 'Supabase não configurado.'); return; }
+  const roloId = qs('#pr-rolo').value;
+  const pecaSel = qs('#pr-peca');
+  const pecaId = pecaSel.value;
+  const pecaOpt = pecaSel.options[pecaSel.selectedIndex];
+  const pesoUnit = parseFloat(pecaOpt?.dataset.peso || 0);
+  const qtd = parseInt(qs('#pr-quantidade').value || 0);
+  const refugo = parseInt(qs('#pr-refugo').value || 0);
+  const operador = qs('#pr-operador').value.trim();
+  const turno = qs('#pr-turno').value;
+
+  if (!roloId || !pecaId || !qtd) { setAlerta('alerta-producao', 'err', 'Preencha rolo, peça e quantidade'); return; }
+  const pesoEstimado = (pesoUnit * (qtd + refugo)) / 1000;
+
+  const { data: rolo, error: e1 } = await sb.from('rolos_arame').select('*').eq('id', roloId).single();
+  if (e1) { setAlerta('alerta-producao', 'err', e1.message); return; }
+
+  const limite = await getLimiteZerarRolo();
+  let novoPeso = rolo.peso_atual_kg - pesoEstimado;
+  let novoStatus = rolo.status;
+  if (novoPeso < limite) { novoPeso = 0; novoStatus = 'zerado'; }
+
+  const { count } = await sb.from('apontamentos_producao').select('*', { count: 'exact', head: true }).eq('rolo_id', roloId);
+  const loteCaixa = `${rolo.lote}-CX${pad((count || 0) + 1, 2)}`;
+
+  const { data: apontamento, error: e2 } = await sb.from('apontamentos_producao').insert({
+    rolo_id: roloId, peca_id: pecaId, quantidade_produzida: qtd, quantidade_refugo: refugo,
+    peso_estimado_kg: pesoEstimado, operador: operador || null, turno: turno || null, lote_caixa: loteCaixa
+  }).select().single();
+  if (e2) { setAlerta('alerta-producao', 'err', e2.message); return; }
+
+  await sb.from('rolos_arame').update({ peso_atual_kg: novoPeso, status: novoStatus }).eq('id', roloId);
+
+  qs('#pr-result-sub').textContent = `${loteCaixa} — ${pecaOpt.textContent} · ${qtd} un`;
+  qs('#producao-form-view').style.display = 'none';
+  qs('#producao-result-view').style.display = 'block';
+
+  abrirEtiquetaCaixa({ ...apontamento, lote_rolo: rolo.lote, peca_nome: pecaOpt.textContent });
+}
+function resetProducaoForm() {
+  qs('#form-producao').reset();
+  qs('#pr-peso-estimado').textContent = '0.000 kg';
+  limparAlertas('alerta-producao');
+  qs('#producao-result-view').style.display = 'none';
+  qs('#producao-form-view').style.display = 'block';
+  loadRolosAtivos(); loadHistoricoProducao();
+}
+
+async function loadHistoricoProducao() {
+  if (!sb) return;
+  const { data, error } = await sb.from('apontamentos_producao')
+    .select('*, pecas(nome), rolos_arame(lote)').order('data_hora', { ascending: false }).limit(10);
+  if (error) return;
+  qs('#lista-historico-producao').innerHTML = data.length ? data.map(a => `
+    <div class="row-item">
+      <div><strong>${a.lote_caixa}</strong><span class="dim"> · ${a.pecas?.nome || '—'}</span></div>
+      <div>${a.quantidade_produzida} un ${a.quantidade_refugo ? `<span class="dim">(refugo ${a.quantidade_refugo})</span>` : ''}</div>
+    </div>`).join('') : '<div class="empty">Nenhum apontamento ainda</div>';
+}
+
+/* ===================== ESTOQUE ===================== */
+async function loadEstoque() {
+  if (!sb) return;
+  const { data: rolos, error: e1 } = await sb.from('rolos_arame').select('*').order('data_entrada', { ascending: false });
+  if (!e1) {
+    guardarRolosCache(rolos);
+    qs('#lista-estoque-rolos').innerHTML = rolos.length ? rolos.map(r => `
+      <div class="row-item">
+        <div><strong>${r.lote}</strong><span class="dim"> · ${r.fornecedor || 'sem fornecedor'}</span></div>
+        <div class="row-item-actions">
+          <span class="badge ${r.status === 'ativo' ? 'b-conf' : 'b-excl'}">${r.status}</span>
+          <span>${Number(r.peso_atual_kg).toFixed(1)} kg</span>
+          <button class="link-btn" onclick="reimprimirEtiquetaRolo('${r.id}')">etiqueta</button>
+        </div>
+      </div>`).join('') : '<div class="empty">Nenhum rolo cadastrado</div>';
+  }
+
+  const { data: caixas, error: e2 } = await sb.from('apontamentos_producao')
+    .select('*, pecas(nome)').order('data_hora', { ascending: false }).limit(50);
+  if (!e2) {
+    qs('#lista-estoque-caixas').innerHTML = caixas.length ? caixas.map(c => `
+      <div class="row-item">
+        <div><strong>${c.lote_caixa}</strong><span class="dim"> · ${c.pecas?.nome || '—'}</span></div>
+        <div>${c.quantidade_produzida} un</div>
+      </div>`).join('') : '<div class="empty">Nenhuma caixa registrada</div>';
+  }
+}
+
+/* ===================== ADMIN — PEÇAS / CONFIG ===================== */
+async function adicionarPeca(e) {
+  e.preventDefault();
+  limparAlertas('alerta-add-peca', 'alerta-add-peca-ok');
+  const nome = qs('#ap-nome').value.trim();
+  const codigo = qs('#ap-codigo').value.trim();
+  const peso = parseFloat(qs('#ap-peso').value);
+  if (!nome || !peso) { setAlerta('alerta-add-peca', 'err', 'Preencha nome e peso'); return; }
+  const { error } = await sb.from('pecas').insert({ nome, codigo: codigo || null, peso_unitario_g: peso });
+  if (error) { setAlerta('alerta-add-peca', 'err', error.message); return; }
+  setAlerta('alerta-add-peca-ok', 'ok', 'Peça cadastrada');
+  qs('#form-add-peca').reset();
+  loadAdminPecas();
+}
+
+async function loadAdminPecas() {
+  const { data, error } = await sb.from('pecas').select('*').order('nome');
+  if (error) return;
+  qs('#tabela-pecas').innerHTML = data.map(p => `
+    <tr>
+      <td>${p.nome}</td>
+      <td class="mono">${p.codigo || '—'}</td>
+      <td>${p.peso_unitario_g}</td>
+      <td><span class="badge ${p.ativo ? 'b-conf' : 'b-fora'}">${p.ativo ? 'ativa' : 'inativa'}</span></td>
+      <td class="actions-cell">
+        <button class="link-btn" onclick="editarPesoPeca('${p.id}', ${p.peso_unitario_g})">editar peso</button>
+        <button class="link-btn danger" onclick="alternarAtivoPeca('${p.id}', ${p.ativo})">${p.ativo ? 'desativar' : 'ativar'}</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function editarPesoPeca(id, pesoAtual) {
+  const novo = prompt('Novo peso unitário (gramas):', pesoAtual);
+  if (novo === null) return;
+  const val = parseFloat(novo);
+  if (!val || val <= 0) return;
+  const { error } = await sb.from('pecas').update({ peso_unitario_g: val }).eq('id', id);
+  if (!error) loadAdminPecas();
+}
+async function alternarAtivoPeca(id, ativoAtual) {
+  const { error } = await sb.from('pecas').update({ ativo: !ativoAtual }).eq('id', id);
+  if (!error) loadAdminPecas();
+}
+
+async function loadAdminConfig() { qs('#ac-limite').value = await getLimiteZerarRolo(); }
+async function salvarConfig(e) {
+  e.preventDefault();
+  limparAlertas('alerta-config', 'alerta-config-ok');
+  const val = parseFloat(qs('#ac-limite').value);
+  if (val === undefined || isNaN(val) || val < 0) { setAlerta('alerta-config', 'err', 'Valor inválido'); return; }
+  const { error } = await sb.from('config').upsert({ chave: 'limite_zerar_rolo_kg', valor: val });
+  if (error) { setAlerta('alerta-config', 'err', error.message); return; }
+  setAlerta('alerta-config-ok', 'ok', 'Configuração salva');
+}
+
+/* ===================== ETIQUETAS ===================== */
+function renderEtiquetaComQr(codigo, tituloEtq, linhas) {
+  const linhasHtml = linhas.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  qs('#label-content').innerHTML = `
+    <div class="etq-top"><strong>VITALBOR</strong><span>${tituloEtq}</span></div>
+    <div class="etq-div"></div>
+    <div class="etq-body">
+      <table class="etq-tbl">${linhasHtml}</table>
+      <div class="etq-qr"><canvas id="qr-canvas"></canvas></div>
+    </div>
+    <div class="etq-code">${codigo}</div>
+  `;
+  qs('#label-overlay').classList.add('open');
+  if (window.QRCode) {
+    QRCode.toCanvas(qs('#qr-canvas'), codigo, { width: 90, margin: 0 }, () => {});
+  }
+}
+
+function abrirEtiquetaRolo(rolo) {
+  renderEtiquetaComQr(rolo.lote, 'Entrada de rolo', [
+    ['Lote', rolo.lote],
+    ['Peso', Number(rolo.peso_entrada_kg).toFixed(1) + ' kg'],
+    ['Fornec.', rolo.fornecedor || '-'],
+    ['Data', dataCurta(rolo.data_entrada)],
+  ]);
+}
+function abrirEtiquetaCaixa(d) {
+  renderEtiquetaComQr(d.lote_caixa, 'Caixa de produção', [
+    ['Lote cx', d.lote_caixa],
+    ['Rolo', d.lote_rolo],
+    ['Peça', d.peca_nome],
+    ['Qtd/Refugo', `${d.quantidade_produzida} / ${d.quantidade_refugo}`],
+    ['Data', dataCurta(d.data_hora)],
+  ]);
+}
+function fecharEtiqueta() { qs('#label-overlay').classList.remove('open'); }
+function imprimirEtiqueta() { window.print(); }
+
+/* ===================== SCANNER (câmera) ===================== */
+let _html5QrScanner = null;
+function abrirScanner(callback) {
+  qs('#scanner-overlay').classList.add('open');
+  _html5QrScanner = new Html5QrcodeScanner('scanner-reader', { fps: 10, qrbox: 220 }, false);
+  _html5QrScanner.render(codigo => { pararScanner(); callback(codigo.trim()); }, () => {});
+}
+function pararScanner() {
+  qs('#scanner-overlay').classList.remove('open');
+  if (_html5QrScanner) { _html5QrScanner.clear().catch(() => {}); _html5QrScanner = null; }
+}
+function abrirScannerSaida() { abrirScanner(onScanSaidaSucesso); }
+function abrirScannerConsulta() { abrirScanner(onScanConsultaSucesso); }
+
+async function onScanSaidaSucesso(lote) {
+  lote = (lote || '').trim();
+  if (!lote || !checarSb()) return;
+  const { data, error } = await sb.from('rolos_arame').select('*').eq('lote', lote).single();
+  if (error || !data) { setAlerta('alerta-saida', 'err', `Rolo "${lote}" não encontrado`); return; }
+  if (data.status !== 'ativo') { setAlerta('alerta-saida', 'err', `Rolo ${lote} já está zerado`); return; }
+  limparAlertas('alerta-saida');
+  _rolosCache[data.id] = data;
+  selecionarRoloNoForm('#sr-rolo', data);
+}
+
+async function onScanConsultaSucesso(lote) {
+  lote = (lote || '').trim();
+  if (!lote || !checarSb()) return;
+  const { data, error } = await sb.from('rolos_arame').select('*').eq('lote', lote).single();
+  const painel = qs('#consulta-resultado');
+  if (error || !data) { painel.innerHTML = `<div class="empty">Rolo "${lote}" não encontrado.</div>`; return; }
+  _rolosCache[data.id] = data;
+  painel.innerHTML = `
+    <div class="row-item">
+      <div><strong>${data.lote}</strong><span class="dim"> · ${data.fornecedor || 'sem fornecedor'}</span></div>
+      <div class="row-item-actions">
+        <span class="badge ${data.status === 'ativo' ? 'b-conf' : 'b-excl'}">${data.status}</span>
+        <span>${Number(data.peso_atual_kg).toFixed(1)} kg</span>
+      </div>
+    </div>
+    ${data.status === 'ativo' ? `<div class="btn-row" style="margin-top:12px;"><button class="btn btn-accent" onclick="irParaSaidaComRolo('${data.id}')">Registrar saída</button></div>` : ''}
+  `;
+}
+function irParaSaidaComRolo(id) {
+  const rolo = _rolosCache[id];
+  if (!rolo) return;
+  showScreen('screen-mov-saida');
+  setTimeout(() => selecionarRoloNoForm('#sr-rolo', rolo), 150);
+}
+function selecionarRoloNoForm(seletor, rolo) {
+  const sel = qs(seletor);
+  let opt = Array.from(sel.options).find(o => o.value === rolo.id);
+  if (!opt) { opt = document.createElement('option'); opt.value = rolo.id; sel.appendChild(opt); }
+  opt.textContent = `${rolo.lote} — restante ${Number(rolo.peso_atual_kg).toFixed(1)} kg`;
+  sel.value = rolo.id;
+}
+</script>
+</body>
+</html>
