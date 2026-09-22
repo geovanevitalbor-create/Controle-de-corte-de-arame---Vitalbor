@@ -287,7 +287,7 @@ td.actions-cell{display:flex;gap:12px}
   .etq-wrap,.etq-wrap *{visibility:visible}
   .etq-wrap{position:fixed;top:0;left:0;margin:0;padding:0;border-radius:0}
   .etq-toolbar,.nav{display:none!important}
-  @page{size:70mm 100mm;margin:0}
+  @page{size:70mm 100mm portrait;margin:0}
 }
 </style>
 </head>
@@ -1081,9 +1081,24 @@ function renderEtiquetaComQr(codigo, tituloEtq, linhas) {
     <div class="etq-code">${codigo}</div>
   `;
   qs('#label-overlay').classList.add('open');
-  if (window.QRCode) {
-    QRCode.toCanvas(qs('#qr-canvas'), codigo, { width: 130, margin: 0 }, () => {});
+  desenharQr(codigo);
+}
+
+function desenharQr(codigo, tentativas) {
+  tentativas = tentativas || 0;
+  const canvas = qs('#qr-canvas');
+  if (!canvas) return;
+  if (!window.QRCode) {
+    if (tentativas < 15) { setTimeout(() => desenharQr(codigo, tentativas + 1), 200); return; }
+    canvas.outerHTML = '<div style="font-size:7pt;color:#a00;text-align:center;">QR indisponível — biblioteca não carregou</div>';
+    return;
   }
+  QRCode.toCanvas(canvas, codigo, { width: 130, margin: 0 }, err => {
+    if (err) {
+      console.error('Erro ao gerar QR code:', err);
+      canvas.outerHTML = '<div style="font-size:7pt;color:#a00;text-align:center;">QR indisponível — ' + err.message + '</div>';
+    }
+  });
 }
 
 function abrirEtiquetaRolo(rolo) {
