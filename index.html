@@ -620,6 +620,13 @@ td.actions-cell{display:flex;gap:12px}
     </button>
   </div>
   <div class="content">
+    <div class="fbox">
+      <h4>Resumo por bitola</h4>
+      <table>
+        <thead><tr><th>Bitola</th><th>Rolos ativos</th><th>Peso total</th></tr></thead>
+        <tbody id="tabela-resumo-bitola"></tbody>
+      </table>
+    </div>
     <div class="row2">
       <div class="fbox">
         <h4>Rolos de arame</h4>
@@ -1033,6 +1040,19 @@ async function loadEstoque() {
   const { data: rolos, error: e1 } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').order('data_entrada', { ascending: false });
   if (!e1) {
     guardarRolosCache(rolos);
+
+    const porBitola = {};
+    rolos.filter(r => r.status === 'ativo').forEach(r => {
+      const chave = r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) : 'Sem bitola';
+      if (!porBitola[chave]) porBitola[chave] = { qtd: 0, peso: 0 };
+      porBitola[chave].qtd++;
+      porBitola[chave].peso += Number(r.peso_atual_kg) || 0;
+    });
+    const resumo = Object.entries(porBitola).sort((a, b) => a[0].localeCompare(b[0]));
+    qs('#tabela-resumo-bitola').innerHTML = resumo.length
+      ? resumo.map(([bitola, info]) => `<tr><td>${bitola}</td><td>${info.qtd}</td><td>${info.peso.toFixed(1)} kg</td></tr>`).join('')
+      : '<tr><td colspan="3" class="empty">Nenhum rolo ativo</td></tr>';
+
     qs('#lista-estoque-rolos').innerHTML = rolos.length ? rolos.map(r => `
       <div class="row-item">
         <div><strong>Nº ${r.numero_sequencial}</strong><span class="dim"> · ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' · ' : ''}${r.fornecedor || 'sem fornecedor'}</span></div>
