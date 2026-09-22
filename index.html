@@ -104,14 +104,8 @@ body{background:var(--bg);color:var(--text)}
 .gc-blue:hover{border-color:var(--blue)}
 .gc-purple .gate-icon{background:rgba(167,139,250,.1);color:var(--purple)}
 .gc-purple:hover{border-color:var(--purple)}
-.gc-amber .gate-icon{background:rgba(251,191,36,.1);color:var(--amber)}
-.gc-amber:hover{border-color:var(--amber)}
-.gate-cards .gate-card:nth-child(4){grid-column:1 / span 3;flex-direction:row;text-align:left;
-  justify-content:flex-start;gap:16px;padding:16px 18px}
-.gate-cards .gate-card:nth-child(4) .gate-icon{margin-bottom:0;width:48px;height:48px;flex-shrink:0}
 @media(max-width:600px){
   .gate-cards{grid-template-columns:1fr 1fr}
-  .gate-cards .gate-card:nth-child(4){grid-column:1 / span 2}
 }
 .gate-admin{margin-top:26px;display:flex;align-items:center;gap:8px;background:rgba(220,38,38,.06);
   border:1px solid rgba(220,38,38,.3);color:#f2a4a4;padding:10px 18px;border-radius:999px;
@@ -283,12 +277,18 @@ td.actions-cell{display:flex;gap:12px}
 .etq-top{display:flex;justify-content:space-between;align-items:baseline;font-size:7pt}
 .etq-top strong{font-size:8pt}
 .etq-div{height:1px;background:#000;margin:1mm 0}
-.etq-qr-col{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;gap:1.5mm}
-.etq-qr{display:flex;align-items:center;justify-content:center}
+.etq-hero{display:flex;gap:6mm;padding:0.5mm 0}
+.etq-hero-item{display:flex;flex-direction:column;gap:.3mm}
+.etq-hero-label{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#000}
+.etq-hero-value{font-size:20pt;font-weight:900;line-height:1.05}
+.etq-hero-value .etq-peso-unidade{font-size:11pt;font-weight:700}
+.etq-qr{display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .etq-qr canvas{width:34mm!important;height:34mm!important;image-rendering:pixelated}
-.etq-peso-destaque{font-size:20pt;font-weight:900;text-align:center;line-height:1}
-.etq-bitola-grande{font-size:20pt;font-weight:900}
-.etq-peso-destaque .etq-peso-unidade{font-size:11pt;font-weight:700}
+.etq-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.8mm 5mm;padding-top:1mm}
+.etq-grid-item{display:flex;flex-direction:column;gap:.4mm}
+.etq-grid-item:last-child:nth-child(odd){grid-column:1 / -1}
+.etq-grid-label{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.etq-grid-value{font-size:11.5pt;font-weight:800;line-height:1.15}
 .etq-body{display:flex;gap:3mm;flex:1;align-items:center}
 .etq-tbl{flex:1;border-collapse:collapse;font-size:10pt;color:#000!important}
 .etq-tbl td{padding:2.4mm 0;border-bottom:1px dashed #bbb;color:#000!important}
@@ -372,11 +372,6 @@ td.actions-cell{display:flex;gap:12px}
         <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="10" height="10" rx="1.5"/><rect x="10" y="4" width="10" height="10" rx="1.5"/></svg></div>
         <div class="gc-name">Estoque</div>
         <div class="gc-desc">Rolos e caixas de arame</div>
-      </div>
-      <div class="gate-card gc-amber" tabindex="0" role="button" onclick="showScreen('screen-etiqueta')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showScreen('screen-etiqueta');}">
-        <div class="gate-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l8-8h6a2 2 0 012 2v6l-8 8a2 2 0 01-2.8 0l-5.2-5.2a2 2 0 010-2.8z"/><circle cx="14.5" cy="9.5" r="1.3"/></svg></div>
-        <div class="gc-name">Gerar etiqueta</div>
-        <div class="gc-desc">Reimprimir etiqueta de rolo já cadastrado</div>
       </div>
     </div>
 
@@ -639,25 +634,6 @@ td.actions-cell{display:flex;gap:12px}
   </div>
 </div>
 
-<!-- ======================= GERAR ETIQUETA ======================= -->
-<div class="screen" id="screen-etiqueta">
-  <div class="nav">
-    <span class="nav-dot"></span><span class="nav-brand">VITALBOR</span><span class="nav-spacer"></span>
-    <span class="nav-title">Gerar etiqueta</span><span class="nav-spacer"></span>
-    <button class="nav-back" onclick="showScreen('screen-gate')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-      Início
-    </button>
-  </div>
-  <div class="content">
-    <div class="fbox">
-      <h4>Reimprimir etiqueta de um rolo já cadastrado</h4>
-      <p class="hint" style="margin-bottom:10px;display:block;">Pra criar um rolo novo (e a etiqueta dele), use Movimentação → Entrada.</p>
-      <div id="lista-rolos-etiqueta"><div class="empty">Configure o Supabase para carregar esta lista.</div></div>
-    </div>
-  </div>
-</div>
-
 <!-- ======================= ADMIN ======================= -->
 <div class="screen" id="screen-admin">
   <div class="nav">
@@ -793,7 +769,6 @@ function showScreen(id) {
 
   if (id === 'screen-mov-saida') { loadRolosAtivos(); }
   if (id === 'screen-mov-entrada') { loadBitolas(); loadOperadores(); preencherDataHoje(); }
-  if (id === 'screen-etiqueta') { loadRolosAtivos(); }
   if (id === 'screen-producao') { loadRolosAtivos(); loadPecas(); loadOperadores(); loadHistoricoProducao(); }
   if (id === 'screen-estoque') { loadEstoque(); }
 
@@ -935,7 +910,6 @@ async function loadRolosAtivos() {
     </div>`).join('') : '<div class="empty">Nenhum rolo ativo</div>';
 
   const listaMov = qs('#lista-rolos-mov'); if (listaMov) listaMov.innerHTML = linhas;
-  const listaEtq = qs('#lista-rolos-etiqueta'); if (listaEtq) listaEtq.innerHTML = linhas;
 }
 function reimprimirEtiquetaRolo(id) { const rolo = _rolosCache[id]; if (rolo) abrirEtiquetaRolo(rolo); }
 
@@ -1219,21 +1193,33 @@ async function salvarConfig(e) {
 }
 
 /* ===================== ETIQUETAS ===================== */
-function renderEtiquetaComQr(qrPayload, identificador, linhas, destaqueAcimaQr) {
+function renderEtiquetaComQr(qrPayload, identificador, linhas, heroHtml) {
   const linhasHtml = linhas.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   qs('#label-content').innerHTML = `
     <div class="etq-top"><strong>VITALBOR</strong><span class="etq-id">${identificador}</span></div>
     <div class="etq-div"></div>
+    ${heroHtml ? `${heroHtml}<div class="etq-div"></div>` : ''}
     <div class="etq-body">
       <table class="etq-tbl">${linhasHtml}</table>
-      <div class="etq-qr-col">
-        ${destaqueAcimaQr || ''}
-        <div class="etq-qr"><canvas id="qr-canvas"></canvas></div>
-      </div>
+      <div class="etq-qr"><canvas id="qr-canvas"></canvas></div>
     </div>
   `;
   qs('#label-overlay').classList.add('open');
   desenharQr(qrPayload);
+}
+
+function renderEtiquetaSemQr(itens) {
+  const itensHtml = itens.map(([k, v]) => `
+    <div class="etq-grid-item">
+      <span class="etq-grid-label">${k}</span>
+      <span class="etq-grid-value">${v}</span>
+    </div>`).join('');
+  qs('#label-content').innerHTML = `
+    <div class="etq-top"><strong>VITALBOR</strong></div>
+    <div class="etq-div"></div>
+    <div class="etq-grid">${itensHtml}</div>
+  `;
+  qs('#label-overlay').classList.add('open');
 }
 
 function desenharQr(codigo, tentativas) {
@@ -1265,26 +1251,30 @@ function abrirEtiquetaRolo(rolo) {
   // como chave técnica no banco, sem aparecer mais na etiqueta.
   const qrPayload = numeroTxt;
 
-  const pesoDestaque = `<div class="etq-peso-destaque">${Number(rolo.peso_entrada_kg || 0).toFixed(1)}<span class="etq-peso-unidade"> kg</span></div>`;
+  const heroHtml = `
+    <div class="etq-hero">
+      <div class="etq-hero-item"><span class="etq-hero-label">Bitola</span><span class="etq-hero-value">${bitolaTxt}</span></div>
+      <div class="etq-hero-item"><span class="etq-hero-label">Peso</span><span class="etq-hero-value">${Number(rolo.peso_entrada_kg || 0).toFixed(1)}<span class="etq-peso-unidade"> kg</span></span></div>
+    </div>`;
 
   renderEtiquetaComQr(qrPayload, numeroTxt, [
-    [`<span class="etq-bitola-grande">Bitola</span>`, `<span class="etq-bitola-grande">${bitolaTxt}</span>`],
     ['Lote', loteTxt],
     ['Fornecedor', rolo.fornecedor || '-'],
     ['Operador', operadorTxt],
     ['Data e hora', dataCurta(rolo.data_entrada)],
-  ], pesoDestaque);
+  ], heroHtml);
 }
 function abrirEtiquetaCaixa(d) {
   const pecaTxt = d.peca_codigo ? `${d.peca_nome} (${d.peca_codigo})` : d.peca_nome;
-  const bitolaLoteTxt = `${d.bitola_valor != null ? formatarBitola(d.bitola_valor) : '-'} · lote ${d.lote_fornecedor || '-'}`;
-  const qtdTxt = d.quantidade_refugo ? `${d.quantidade_produzida} un (refugo ${d.quantidade_refugo})` : `${d.quantidade_produzida} un`;
-  renderEtiquetaComQr(d.lote_caixa, d.lote_caixa, [
+  const bitolaLoteTxt = `${d.bitola_valor != null ? formatarBitola(d.bitola_valor) : '-'}${d.lote_fornecedor ? ' · lote ' + d.lote_fornecedor : ''}`;
+  renderEtiquetaSemQr([
     ['Peça', pecaTxt],
     ['Bitola/Lote', bitolaLoteTxt],
     ['Ordem de produção', d.ordem_producao || '-'],
-    ['Quantidade', qtdTxt],
-    ['Data', dataCurta(d.data_hora)],
+    ['Quantidade', `${d.quantidade_produzida} un`],
+    ['Refugo', `${d.quantidade_refugo || 0} un`],
+    ['Operador', d.operador_nome || '-'],
+    ['Data e hora', dataCurta(d.data_hora)],
   ]);
 }
 function fecharEtiqueta() { qs('#label-overlay').classList.remove('open'); }
