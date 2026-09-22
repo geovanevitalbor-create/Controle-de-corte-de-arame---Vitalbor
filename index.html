@@ -1300,7 +1300,7 @@ function abrirEtiquetaRolo(rolo) {
   const bitolaTxt = rolo.bitola_texto || (rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) : '-');
   const operadorTxt = rolo.operador_texto || rolo.operadores?.nome || '-';
   const loteTxt = rolo.lote_fornecedor || '-';
-  const numeroTxt = rolo.numero_sequencial != null ? String(rolo.numero_sequencial) : 'PRÉVIA';
+  const numeroTxt = rolo.numero_sequencial != null ? String(rolo.numero_sequencial) : (rolo.avulsa ? 'PRÉVIA' : '—');
 
   // Rolo real: o QR guarda só o número sequencial — escanear (ou digitar esse número
   // na mão) busca o registro ao vivo no banco (peso atual/status atualizados, não um
