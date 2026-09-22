@@ -413,6 +413,7 @@ td.actions-cell{display:flex;gap:12px}
               <select id="pr-turno"><option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option></select>
             </div>
           </div>
+          <div class="field"><label>Ordem de produção (opcional)</label><input type="text" id="pr-ordem-producao"></div>
           <div class="estimate-box"><span>Peso estimado consumido do rolo</span><strong id="pr-peso-estimado">0.000 kg</strong></div>
           <p class="hint" style="margin-bottom:14px;display:block;">O peso considera peças boas + refugo, pois ambos foram cortados do rolo.</p>
           <div class="alert alert-err" id="alerta-producao"></div>
@@ -997,7 +998,7 @@ async function loadPecas() {
   if (error) return;
   const sel = qs('#pr-peca');
   if (sel) sel.innerHTML = '<option value="">Selecione a peça</option>' +
-    data.map(p => `<option value="${p.id}" data-peso="${p.peso_unitario_g}">${p.nome}</option>`).join('');
+    data.map(p => `<option value="${p.id}" data-peso="${p.peso_unitario_g}" data-codigo="${p.codigo || ''}">${p.nome}</option>`).join('');
 }
 
 function formatarBitola(valorMm) {
@@ -1048,6 +1049,7 @@ async function registrarProducao(e) {
   const operadorId = qs('#pr-operador').value;
   const operadorNome = operadorId ? qs('#pr-operador').options[qs('#pr-operador').selectedIndex].textContent : null;
   const turno = qs('#pr-turno').value;
+  const ordemProducao = qs('#pr-ordem-producao').value.trim();
 
   if (!roloId || !pecaId || !qtd) { setAlerta('alerta-producao', 'err', 'Preencha rolo, peça e quantidade'); return; }
   const pesoEstimado = (pesoUnit * (qtd + refugo)) / 1000;
@@ -1065,7 +1067,8 @@ async function registrarProducao(e) {
 
   const { data: apontamento, error: e2 } = await sb.from('apontamentos_producao').insert({
     rolo_id: roloId, peca_id: pecaId, quantidade_produzida: qtd, quantidade_refugo: refugo,
-    peso_estimado_kg: pesoEstimado, operador_id: operadorId || null, turno: turno || null, lote_caixa: loteCaixa
+    peso_estimado_kg: pesoEstimado, operador_id: operadorId || null, turno: turno || null,
+    lote_caixa: loteCaixa, ordem_producao: ordemProducao || null
   }).select().single();
   if (e2) { setAlerta('alerta-producao', 'err', e2.message); return; }
 
@@ -1075,7 +1078,11 @@ async function registrarProducao(e) {
   qs('#producao-form-view').style.display = 'none';
   qs('#producao-result-view').style.display = 'block';
 
-  abrirEtiquetaCaixa({ ...apontamento, lote_rolo: rolo.lote, lote_fornecedor: rolo.lote_fornecedor, bitola_valor: rolo.bitolas?.valor_mm, operador_nome: operadorNome, peca_nome: pecaOpt.textContent });
+  abrirEtiquetaCaixa({
+    ...apontamento, lote_rolo: rolo.lote, lote_fornecedor: rolo.lote_fornecedor,
+    bitola_valor: rolo.bitolas?.valor_mm, operador_nome: operadorNome,
+    peca_nome: pecaOpt.textContent, peca_codigo: pecaOpt.dataset.codigo || null
+  });
 }
 function resetProducaoForm() {
   qs('#form-producao').reset();
@@ -1329,14 +1336,15 @@ function abrirEtiquetaRolo(rolo) {
   ]);
 }
 function abrirEtiquetaCaixa(d) {
-  const roloTxt = d.lote_fornecedor ? `${d.lote_rolo} (forn. ${d.lote_fornecedor})` : d.lote_rolo;
-  const pecaTxt = d.bitola_valor != null ? `${d.peca_nome} · ${formatarBitola(d.bitola_valor)}` : d.peca_nome;
-  renderEtiquetaComQr(d.lote_caixa, d.lote_caixa, 'Caixa de produção', [
-    ['Lote cx', d.lote_caixa],
-    ['Rolo', roloTxt],
+  const pecaTxt = d.peca_codigo ? `${d.peca_nome} (${d.peca_codigo})` : d.peca_nome;
+  const bitolaLoteTxt = `${d.bitola_valor != null ? formatarBitola(d.bitola_valor) : '-'} · lote ${d.lote_fornecedor || '-'}`;
+  const qtdTxt = d.quantidade_refugo ? `${d.quantidade_produzida} un (refugo ${d.quantidade_refugo})` : `${d.quantidade_produzida} un`;
+  renderEtiquetaComQr(d.lote_caixa, d.lote_caixa, 'Produção', [
     ['Peça', pecaTxt],
-    ['Qtd/Refugo', `${d.quantidade_produzida} / ${d.quantidade_refugo}`],
-    ['Operador', `${d.operador_nome || '-'} · ${dataCurta(d.data_hora)}`],
+    ['Bitola/Lote', bitolaLoteTxt],
+    ['Ordem de produção', d.ordem_producao || '-'],
+    ['Quantidade', qtdTxt],
+    ['Data', dataCurta(d.data_hora)],
   ]);
 }
 function fecharEtiqueta() { qs('#label-overlay').classList.remove('open'); }
