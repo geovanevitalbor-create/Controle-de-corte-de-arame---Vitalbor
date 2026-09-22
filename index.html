@@ -286,7 +286,7 @@ td.actions-cell{display:flex;gap:12px}
 .etq-qr canvas{width:34mm!important;height:34mm!important;image-rendering:pixelated}
 .etq-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.8mm 5mm;padding-top:1mm}
 .etq-grid-item{display:flex;flex-direction:column;gap:.4mm}
-.etq-grid-item:last-child:nth-child(odd){grid-column:1 / -1}
+.etq-grid-item.etq-grid-full{grid-column:1 / -1}
 .etq-grid-label{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
 .etq-grid-value{font-size:11.5pt;font-weight:800;line-height:1.15}
 .etq-body{display:flex;gap:3mm;flex:1;align-items:center}
@@ -1209,8 +1209,8 @@ function renderEtiquetaComQr(qrPayload, identificador, linhas, heroHtml) {
 }
 
 function renderEtiquetaSemQr(itens) {
-  const itensHtml = itens.map(([k, v]) => `
-    <div class="etq-grid-item">
+  const itensHtml = itens.map(([k, v, full]) => `
+    <div class="etq-grid-item${full ? ' etq-grid-full' : ''}">
       <span class="etq-grid-label">${k}</span>
       <span class="etq-grid-value">${v}</span>
     </div>`).join('');
@@ -1265,16 +1265,17 @@ function abrirEtiquetaRolo(rolo) {
   ], heroHtml);
 }
 function abrirEtiquetaCaixa(d) {
-  const pecaTxt = d.peca_codigo ? `${d.peca_nome} (${d.peca_codigo})` : d.peca_nome;
-  const bitolaLoteTxt = `${d.bitola_valor != null ? formatarBitola(d.bitola_valor) : '-'}${d.lote_fornecedor ? ' · lote ' + d.lote_fornecedor : ''}`;
+  const codTxt = d.peca_codigo || d.peca_nome;
+  const bitolaTxt = d.bitola_valor != null ? formatarBitola(d.bitola_valor) : '-';
   renderEtiquetaSemQr([
-    ['Peça', pecaTxt],
-    ['Bitola/Lote', bitolaLoteTxt],
-    ['Ordem de produção', d.ordem_producao || '-'],
-    ['Quantidade', `${d.quantidade_produzida} un`],
-    ['Refugo', `${d.quantidade_refugo || 0} un`],
-    ['Operador', d.operador_nome || '-'],
-    ['Data e hora', dataCurta(d.data_hora)],
+    ['COD', codTxt],
+    ['OP', d.operador_nome || '-'],
+    ['BITOLA', bitolaTxt],
+    ['LOTE', d.lote_fornecedor || '-'],
+    ['DATA', dataCurta(d.data_hora), true],
+    ['QTDE', `${d.quantidade_produzida} un`],
+    ['REFUGO', `${d.quantidade_refugo || 0} un`],
+    ['N. ORDEM DE PRODUÇÃO', d.ordem_producao || '-', true],
   ]);
 }
 function fecharEtiqueta() { qs('#label-overlay').classList.remove('open'); }
