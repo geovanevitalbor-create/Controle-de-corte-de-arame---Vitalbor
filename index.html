@@ -517,7 +517,7 @@ td.actions-cell{display:flex;gap:12px}
             <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="er-fornecedor"></div>
           </div>
           <div class="row2">
-            <div class="field"><label>Bitola do arame</label><select id="er-bitola" required></select></div>
+            <div class="field"><label>Bitola do arame</label><select id="er-bitola" class="bitola-select" required></select></div>
             <div class="field"><label>Operador responsável</label><input type="text" id="er-operador"></div>
           </div>
           <div class="field"><label>Lote do fornecedor</label><input type="text" id="er-lote-fornecedor"></div>
@@ -534,7 +534,10 @@ td.actions-cell{display:flex;gap:12px}
             <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" name="peso" required></div>
             <div class="field"><label>Fornecedor (opcional)</label><input type="text" name="fornecedor"></div>
           </div>
-          <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
+          <div class="row2">
+            <div class="field"><label>Bitola (opcional)</label><select name="bitola" class="bitola-select"><option value="">—</option></select></div>
+            <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
+          </div>
           <button class="btn btn-ghost" type="submit">Gerar etiqueta</button>
           <p class="hint" style="margin-top:8px;display:block;">Não grava no banco — só pra imprimir na hora.</p>
         </form>
@@ -656,7 +659,10 @@ td.actions-cell{display:flex;gap:12px}
           <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" name="peso" required></div>
           <div class="field"><label>Fornecedor (opcional)</label><input type="text" name="fornecedor"></div>
         </div>
-        <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
+        <div class="row2">
+          <div class="field"><label>Bitola (opcional)</label><select name="bitola" class="bitola-select"><option value="">—</option></select></div>
+          <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
+        </div>
         <button class="btn btn-accent" type="submit">Gerar etiqueta</button>
       </form>
     </div>
@@ -781,7 +787,7 @@ function showScreen(id) {
 
   if (id === 'screen-mov-saida') { loadRolosAtivos(); }
   if (id === 'screen-mov-entrada') { loadBitolas(); }
-  if (id === 'screen-etiqueta') { loadRolosAtivos(); }
+  if (id === 'screen-etiqueta') { loadRolosAtivos(); loadBitolas(); }
   if (id === 'screen-producao') { loadRolosAtivos(); loadPecas(); loadHistoricoProducao(); }
   if (id === 'screen-estoque') { loadEstoque(); }
 
@@ -865,9 +871,11 @@ function gerarEtiquetaAvulsa(e) {
   const peso = parseFloat(e.target.querySelector('[name="peso"]').value);
   const fornecedor = e.target.querySelector('[name="fornecedor"]').value.trim();
   const loteFornecedor = e.target.querySelector('[name="lote_fornecedor"]').value.trim();
+  const bitolaSel = e.target.querySelector('[name="bitola"]');
+  const bitolaTexto = bitolaSel && bitolaSel.value ? bitolaSel.options[bitolaSel.selectedIndex].textContent : null;
   if (!peso || peso <= 0) { alert('Informe o peso do rolo antes de gerar a etiqueta'); return; }
   abrirEtiquetaRolo({
-    lote: `RL-${hojeStr()}-PRÉVIA`, peso_entrada_kg: peso, fornecedor,
+    lote: `RL-${hojeStr()}-PRÉVIA`, peso_entrada_kg: peso, fornecedor, bitola_texto: bitolaTexto,
     lote_fornecedor: loteFornecedor, data_entrada: new Date().toISOString()
   });
 }
@@ -953,9 +961,11 @@ async function loadBitolas() {
   if (!sb) return;
   const { data, error } = await sb.from('bitolas').select('*').eq('ativo', true).order('valor_mm');
   if (error) return;
-  const sel = qs('#er-bitola');
-  if (sel) sel.innerHTML = '<option value="">Selecione a bitola</option>' +
-    data.map(b => `<option value="${b.id}">${formatarBitola(b.valor_mm)}</option>`).join('');
+  const optsHtml = data.map(b => `<option value="${b.id}">${formatarBitola(b.valor_mm)}</option>`).join('');
+  document.querySelectorAll('.bitola-select').forEach(sel => {
+    const placeholder = sel.required ? '<option value="">Selecione a bitola</option>' : '<option value="">—</option>';
+    sel.innerHTML = placeholder + optsHtml;
+  });
 }
 
 function atualizarPesoEstimado() {
@@ -1178,7 +1188,7 @@ function desenharQr(codigo, tentativas) {
 }
 
 function abrirEtiquetaRolo(rolo) {
-  const bitolaTxt = rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) : '-';
+  const bitolaTxt = rolo.bitola_texto || (rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) : '-');
   const fornecTxt = rolo.fornecedor
     ? (rolo.lote_fornecedor ? `${rolo.fornecedor} (lote ${rolo.lote_fornecedor})` : rolo.fornecedor)
     : (rolo.lote_fornecedor ? `lote ${rolo.lote_fornecedor}` : '-');
