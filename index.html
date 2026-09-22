@@ -263,23 +263,23 @@ td.actions-cell{display:flex;gap:12px}
 .scanner-box h4{margin:0 0 14px;font-size:13px;color:var(--text2);font-weight:700}
 .scanner-box #scanner-reader{margin-bottom:14px;border-radius:9px;overflow:hidden}
 
-/* ===== Etiqueta impressa (preto sobre branco, 70x50mm) ===== */
+/* ===== Etiqueta impressa (preto sobre branco, 70x100mm) ===== */
 .label-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;
   align-items:center;justify-content:center;z-index:460;padding:20px}
 .label-overlay.open{display:flex}
 .etq-wrap{background:#fff;border-radius:8px;padding:10px}
 .etq{background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;
-  width:70mm;height:50mm;padding:1.5mm 2mm 1mm;display:flex;flex-direction:column;overflow:hidden}
+  width:70mm;height:100mm;padding:2mm 3mm;display:flex;flex-direction:column;overflow:hidden}
 .etq-top{display:flex;justify-content:space-between;align-items:baseline;font-size:7pt}
 .etq-top strong{font-size:8pt}
-.etq-div{height:1px;background:#000;margin:.8mm 0}
-.etq-body{display:flex;gap:2mm;flex:1}
-.etq-tbl{width:100%;border-collapse:collapse;font-size:5.5pt;color:#000}
-.etq-tbl td{padding:1mm 0;border:none}
-.etq-tbl td:first-child{font-weight:900;white-space:nowrap;padding-right:2mm}
-.etq-qr{display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.etq-qr canvas{width:22mm!important;height:22mm!important;image-rendering:pixelated}
-.etq-code{font-family:monospace;font-size:5pt;text-align:center;letter-spacing:1px;margin-top:.5mm}
+.etq-div{height:1px;background:#000;margin:1mm 0}
+.etq-qr{display:flex;align-items:center;justify-content:center;margin:2mm 0;flex-shrink:0}
+.etq-qr canvas{width:32mm!important;height:32mm!important;image-rendering:pixelated}
+.etq-tbl{width:100%;border-collapse:collapse;font-size:7pt;color:#000;flex:1}
+.etq-tbl td{padding:1.4mm 0;border-bottom:1px dashed #bbb}
+.etq-tbl tr:last-child td{border-bottom:none}
+.etq-tbl td:first-child{font-weight:900;white-space:nowrap;padding-right:2mm;width:38%}
+.etq-code{font-family:monospace;font-size:6pt;text-align:center;letter-spacing:1px;margin-top:1mm}
 .etq-toolbar{display:flex;gap:10px;justify-content:center;margin-top:16px}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -287,7 +287,7 @@ td.actions-cell{display:flex;gap:12px}
   .etq-wrap,.etq-wrap *{visibility:visible}
   .etq-wrap{position:fixed;top:0;left:0;margin:0;padding:0;border-radius:0}
   .etq-toolbar,.nav{display:none!important}
-  @page{size:70mm 50mm;margin:0}
+  @page{size:70mm 100mm;margin:0}
 }
 </style>
 </head>
@@ -513,6 +513,7 @@ td.actions-cell{display:flex;gap:12px}
             <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" id="er-peso" required></div>
             <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="er-fornecedor"></div>
           </div>
+          <div class="field"><label>Lote do fornecedor</label><input type="text" id="er-lote-fornecedor"></div>
           <div class="field"><label>Observações (opcional)</label><textarea id="er-obs" rows="2"></textarea></div>
           <div class="alert alert-err" id="alerta-entrada"></div>
           <button class="btn btn-accent" type="submit">Registrar entrada e gerar etiqueta</button>
@@ -523,9 +524,10 @@ td.actions-cell{display:flex;gap:12px}
         <h4>Só gerar etiqueta (sem salvar)</h4>
         <form id="form-etiqueta-avulsa-mov" onsubmit="gerarEtiquetaAvulsa(event)">
           <div class="row2">
-            <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" id="ge-peso-mov" required></div>
-            <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="ge-fornecedor-mov"></div>
+            <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" name="peso" required></div>
+            <div class="field"><label>Fornecedor (opcional)</label><input type="text" name="fornecedor"></div>
           </div>
+          <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
           <button class="btn btn-ghost" type="submit">Gerar etiqueta</button>
           <p class="hint" style="margin-top:8px;display:block;">Não grava no banco — só pra imprimir na hora.</p>
         </form>
@@ -644,9 +646,10 @@ td.actions-cell{display:flex;gap:12px}
       <h4>Etiqueta avulsa (sem salvar no estoque)</h4>
       <form id="form-etiqueta-avulsa" onsubmit="gerarEtiquetaAvulsa(event)">
         <div class="row2">
-          <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" id="ge-peso" required></div>
-          <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="ge-fornecedor"></div>
+          <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" name="peso" required></div>
+          <div class="field"><label>Fornecedor (opcional)</label><input type="text" name="fornecedor"></div>
         </div>
+        <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
         <button class="btn btn-accent" type="submit">Gerar etiqueta</button>
       </form>
     </div>
@@ -802,13 +805,14 @@ async function registrarEntradaRolo(e) {
   if (!checarSb()) { setAlerta('alerta-entrada', 'err', 'Supabase não configurado.'); return; }
   const peso = parseFloat(qs('#er-peso').value);
   const fornecedor = qs('#er-fornecedor').value.trim();
+  const loteFornecedor = qs('#er-lote-fornecedor').value.trim();
   const obs = qs('#er-obs').value.trim();
   if (!peso || peso <= 0) { setAlerta('alerta-entrada', 'err', 'Informe um peso válido'); return; }
 
   const lote = await gerarLoteRolo();
   const { data, error } = await sb.from('rolos_arame').insert({
     lote, peso_entrada_kg: peso, peso_atual_kg: peso,
-    fornecedor: fornecedor || null, observacoes: obs || null, status: 'ativo'
+    fornecedor: fornecedor || null, lote_fornecedor: loteFornecedor || null, observacoes: obs || null, status: 'ativo'
   }).select().single();
 
   if (error) { setAlerta('alerta-entrada', 'err', 'Erro ao registrar: ' + error.message); return; }
@@ -827,12 +831,14 @@ function resetEntradaForm() {
 
 function gerarEtiquetaAvulsa(e) {
   e.preventDefault();
-  const pesoInp = e.target.querySelector('input[type="number"]');
-  const fornInp = e.target.querySelector('input[type="text"]');
-  const peso = parseFloat(pesoInp.value);
-  const fornecedor = fornInp.value.trim();
+  const peso = parseFloat(e.target.querySelector('[name="peso"]').value);
+  const fornecedor = e.target.querySelector('[name="fornecedor"]').value.trim();
+  const loteFornecedor = e.target.querySelector('[name="lote_fornecedor"]').value.trim();
   if (!peso || peso <= 0) { alert('Informe o peso do rolo antes de gerar a etiqueta'); return; }
-  abrirEtiquetaRolo({ lote: `RL-${hojeStr()}-PRÉVIA`, peso_entrada_kg: peso, fornecedor, data_entrada: new Date().toISOString() });
+  abrirEtiquetaRolo({
+    lote: `RL-${hojeStr()}-PRÉVIA`, peso_entrada_kg: peso, fornecedor,
+    lote_fornecedor: loteFornecedor, data_entrada: new Date().toISOString()
+  });
 }
 
 /* ===================== MOVIMENTAÇÃO — SAÍDA ===================== */
@@ -957,7 +963,7 @@ async function registrarProducao(e) {
   qs('#producao-form-view').style.display = 'none';
   qs('#producao-result-view').style.display = 'block';
 
-  abrirEtiquetaCaixa({ ...apontamento, lote_rolo: rolo.lote, peca_nome: pecaOpt.textContent });
+  abrirEtiquetaCaixa({ ...apontamento, lote_rolo: rolo.lote, lote_fornecedor: rolo.lote_fornecedor, peca_nome: pecaOpt.textContent });
 }
 function resetProducaoForm() {
   qs('#form-producao').reset();
@@ -1069,21 +1075,21 @@ function renderEtiquetaComQr(codigo, tituloEtq, linhas) {
   qs('#label-content').innerHTML = `
     <div class="etq-top"><strong>VITALBOR</strong><span>${tituloEtq}</span></div>
     <div class="etq-div"></div>
-    <div class="etq-body">
-      <table class="etq-tbl">${linhasHtml}</table>
-      <div class="etq-qr"><canvas id="qr-canvas"></canvas></div>
-    </div>
+    <div class="etq-qr"><canvas id="qr-canvas"></canvas></div>
+    <div class="etq-div"></div>
+    <table class="etq-tbl">${linhasHtml}</table>
     <div class="etq-code">${codigo}</div>
   `;
   qs('#label-overlay').classList.add('open');
   if (window.QRCode) {
-    QRCode.toCanvas(qs('#qr-canvas'), codigo, { width: 90, margin: 0 }, () => {});
+    QRCode.toCanvas(qs('#qr-canvas'), codigo, { width: 130, margin: 0 }, () => {});
   }
 }
 
 function abrirEtiquetaRolo(rolo) {
   renderEtiquetaComQr(rolo.lote, 'Entrada de rolo', [
     ['Lote', rolo.lote],
+    ['Lote forn.', rolo.lote_fornecedor || '-'],
     ['Peso', Number(rolo.peso_entrada_kg).toFixed(1) + ' kg'],
     ['Fornec.', rolo.fornecedor || '-'],
     ['Data', dataCurta(rolo.data_entrada)],
@@ -1093,6 +1099,7 @@ function abrirEtiquetaCaixa(d) {
   renderEtiquetaComQr(d.lote_caixa, 'Caixa de produção', [
     ['Lote cx', d.lote_caixa],
     ['Rolo', d.lote_rolo],
+    ['Lote forn.', d.lote_fornecedor || '-'],
     ['Peça', d.peca_nome],
     ['Qtd/Refugo', `${d.quantidade_produzida} / ${d.quantidade_refugo}`],
     ['Data', dataCurta(d.data_hora)],
