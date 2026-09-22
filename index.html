@@ -233,15 +233,23 @@ td.actions-cell{display:flex;gap:12px}
 .result-ok p{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.5}
 .result-actions{display:flex;flex-direction:column;gap:10px}
 
-/* ===== Admin: tabs + painéis ===== */
-.admin-bar{display:flex;gap:2px;padding:0 22px;background:rgba(6,10,15,.9);backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--bdr);overflow-x:auto}
-.admin-tab{flex-shrink:0;padding:13px 14px;font-size:10px;font-weight:600;color:var(--text3);
-  border:none;background:transparent;font-family:inherit;text-transform:uppercase;letter-spacing:.8px;
-  border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
-.admin-tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+/* ===== Admin: barra lateral + painéis ===== */
+.admin-shell{display:flex;flex:1;min-height:0}
+.admin-bar{display:flex;flex-direction:column;gap:2px;width:180px;flex-shrink:0;
+  padding:20px 10px;background:var(--surf);border-right:1px solid var(--bdr)}
+.admin-tab{padding:11px 14px;font-size:13px;font-weight:600;color:var(--text2);
+  border:none;background:transparent;font-family:inherit;text-align:left;border-radius:8px;cursor:pointer}
+.admin-tab:hover{background:var(--surf2)}
+.admin-tab.on{color:var(--accent);background:rgba(0,131,62,.12)}
+.admin-shell .content{margin:0;max-width:900px}
 .admin-panel{display:none}
 .admin-panel.on{display:block}
+
+@media(max-width:700px){
+  .admin-shell{flex-direction:column}
+  .admin-bar{width:100%;flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--bdr)}
+  .admin-tab{flex-shrink:0}
+}
 
 /* ===== Modal (login/confirmação) ===== */
 .login-overlay{position:fixed;inset:0;z-index:500;background:rgba(6,10,15,.88);backdrop-filter:blur(14px);
@@ -400,7 +408,7 @@ td.actions-cell{display:flex;gap:12px}
             <div class="field"><label>Quantidade de refugo</label><input type="number" min="0" id="pr-refugo" value="0" oninput="atualizarPesoEstimado()"></div>
           </div>
           <div class="row2">
-            <div class="field"><label>Operador</label><input type="text" id="pr-operador"></div>
+            <div class="field"><label>Operador</label><select id="pr-operador" class="operador-select"></select></div>
             <div class="field"><label>Turno</label>
               <select id="pr-turno"><option value="Manhã">Manhã</option><option value="Tarde">Tarde</option><option value="Noite">Noite</option></select>
             </div>
@@ -513,14 +521,17 @@ td.actions-cell{display:flex;gap:12px}
         <h4>Registrar entrada</h4>
         <form id="form-entrada-rolo" onsubmit="registrarEntradaRolo(event)">
           <div class="row2">
-            <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" id="er-peso" required></div>
-            <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="er-fornecedor"></div>
+            <div class="field"><label>Peso total declarado (kg)</label><input type="number" step="0.01" id="er-peso" required></div>
+            <div class="field"><label>Fornecedor</label><input type="text" id="er-fornecedor"></div>
           </div>
           <div class="row2">
             <div class="field"><label>Bitola do arame</label><select id="er-bitola" class="bitola-select" required></select></div>
-            <div class="field"><label>Operador responsável</label><input type="text" id="er-operador"></div>
+            <div class="field"><label>Operador responsável</label><select id="er-operador" class="operador-select"></select></div>
           </div>
-          <div class="field"><label>Lote do fornecedor</label><input type="text" id="er-lote-fornecedor"></div>
+          <div class="row2">
+            <div class="field"><label>Lote do fornecedor</label><input type="text" id="er-lote-fornecedor"></div>
+            <div class="field"><label>Data de recebimento</label><input type="date" id="er-data-recebimento" required></div>
+          </div>
           <div class="field"><label>Observações (opcional)</label><textarea id="er-obs" rows="2"></textarea></div>
           <div class="alert alert-err" id="alerta-entrada"></div>
           <button class="btn btn-accent" type="submit">Registrar entrada e gerar etiqueta</button>
@@ -683,9 +694,11 @@ td.actions-cell{display:flex;gap:12px}
       Sair
     </button>
   </div>
+  <div class="admin-shell">
   <div class="admin-bar">
     <button class="admin-tab on" data-tab="admin-pecas" onclick="mudarAdminTab('admin-pecas')">Peças</button>
     <button class="admin-tab" data-tab="admin-bitolas" onclick="mudarAdminTab('admin-bitolas')">Bitolas</button>
+    <button class="admin-tab" data-tab="admin-operadores" onclick="mudarAdminTab('admin-operadores')">Operadores</button>
     <button class="admin-tab" data-tab="admin-config" onclick="mudarAdminTab('admin-config')">Configuração</button>
   </div>
   <div class="content">
@@ -729,6 +742,24 @@ td.actions-cell{display:flex;gap:12px}
         </table>
       </div>
     </div>
+    <div class="admin-panel" data-panel="admin-operadores">
+      <div class="fbox">
+        <h4>Cadastrar operador</h4>
+        <form id="form-add-operador" onsubmit="adicionarOperador(event)">
+          <div class="field"><label>Nome do operador</label><input type="text" id="ao-nome" required></div>
+          <div class="alert alert-err" id="alerta-add-operador"></div>
+          <div class="alert alert-ok" id="alerta-add-operador-ok"></div>
+          <button class="btn btn-accent" type="submit">Cadastrar operador</button>
+        </form>
+      </div>
+      <div class="fbox">
+        <h4>Operadores cadastrados</h4>
+        <table>
+          <thead><tr><th>Nome</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tabela-operadores"></tbody>
+        </table>
+      </div>
+    </div>
     <div class="admin-panel" data-panel="admin-config">
       <div class="fbox">
         <h4>Configuração de estoque</h4>
@@ -740,6 +771,7 @@ td.actions-cell{display:flex;gap:12px}
         </form>
       </div>
     </div>
+  </div>
   </div>
 </div>
 
@@ -786,9 +818,9 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 
   if (id === 'screen-mov-saida') { loadRolosAtivos(); }
-  if (id === 'screen-mov-entrada') { loadBitolas(); }
+  if (id === 'screen-mov-entrada') { loadBitolas(); loadOperadores(); preencherDataHoje(); }
   if (id === 'screen-etiqueta') { loadRolosAtivos(); loadBitolas(); }
-  if (id === 'screen-producao') { loadRolosAtivos(); loadPecas(); loadHistoricoProducao(); }
+  if (id === 'screen-producao') { loadRolosAtivos(); loadPecas(); loadOperadores(); loadHistoricoProducao(); }
   if (id === 'screen-estoque') { loadEstoque(); }
 
   setTimeout(() => {
@@ -811,6 +843,7 @@ function confirmarLogin() {
   showScreen('screen-admin');
   loadAdminPecas();
   loadAdminBitolas();
+  loadAdminOperadores();
   loadAdminConfig();
 }
 
@@ -829,7 +862,7 @@ async function getLimiteZerarRolo() {
 /* ===================== MOVIMENTAÇÃO — ENTRADA ===================== */
 async function gerarLoteRolo() {
   const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0);
-  const { count } = await sb.from('rolos_arame').select('*', { count: 'exact', head: true }).gte('data_entrada', inicioDia.toISOString());
+  const { count } = await sb.from('rolos_arame').select('*', { count: 'exact', head: true }).gte('criado_em', inicioDia.toISOString());
   return `RL-${hojeStr()}-${pad((count || 0) + 1)}`;
 }
 
@@ -840,17 +873,21 @@ async function registrarEntradaRolo(e) {
   const peso = parseFloat(qs('#er-peso').value);
   const fornecedor = qs('#er-fornecedor').value.trim();
   const bitolaId = qs('#er-bitola').value;
-  const operador = qs('#er-operador').value.trim();
+  const operadorId = qs('#er-operador').value;
+  const dataRecebimento = qs('#er-data-recebimento').value;
   const loteFornecedor = qs('#er-lote-fornecedor').value.trim();
   const obs = qs('#er-obs').value.trim();
   if (!peso || peso <= 0) { setAlerta('alerta-entrada', 'err', 'Informe um peso válido'); return; }
   if (!bitolaId) { setAlerta('alerta-entrada', 'err', 'Selecione a bitola do arame'); return; }
+  if (!dataRecebimento) { setAlerta('alerta-entrada', 'err', 'Informe a data de recebimento'); return; }
 
   const lote = await gerarLoteRolo();
+  const dataEntradaIso = new Date(dataRecebimento + 'T12:00:00').toISOString();
   const { data, error } = await sb.from('rolos_arame').insert({
-    lote, peso_entrada_kg: peso, peso_atual_kg: peso, bitola_id: bitolaId, operador: operador || null,
-    fornecedor: fornecedor || null, lote_fornecedor: loteFornecedor || null, observacoes: obs || null, status: 'ativo'
-  }).select('*, bitolas(valor_mm)').single();
+    lote, peso_entrada_kg: peso, peso_atual_kg: peso, bitola_id: bitolaId, operador_id: operadorId || null,
+    fornecedor: fornecedor || null, lote_fornecedor: loteFornecedor || null, observacoes: obs || null,
+    status: 'ativo', data_entrada: dataEntradaIso
+  }).select('*, bitolas(valor_mm), operadores(nome)').single();
 
   if (error) { setAlerta('alerta-entrada', 'err', 'Erro ao registrar: ' + error.message); return; }
 
@@ -859,11 +896,16 @@ async function registrarEntradaRolo(e) {
   qs('#mov-entrada-result-view').style.display = 'block';
   abrirEtiquetaRolo(data);
 }
+function preencherDataHoje() {
+  const el = qs('#er-data-recebimento');
+  if (el && !el.value) el.value = new Date().toISOString().slice(0, 10);
+}
 function resetEntradaForm() {
   qs('#form-entrada-rolo').reset();
   limparAlertas('alerta-entrada');
   qs('#mov-entrada-result-view').style.display = 'none';
   qs('#mov-entrada-form-view').style.display = 'block';
+  preencherDataHoje();
 }
 
 function gerarEtiquetaAvulsa(e) {
@@ -968,6 +1010,16 @@ async function loadBitolas() {
   });
 }
 
+async function loadOperadores() {
+  if (!sb) return;
+  const { data, error } = await sb.from('operadores').select('*').eq('ativo', true).order('nome');
+  if (error) return;
+  const optsHtml = data.map(o => `<option value="${o.id}">${o.nome}</option>`).join('');
+  document.querySelectorAll('.operador-select').forEach(sel => {
+    sel.innerHTML = '<option value="">Selecione o operador</option>' + optsHtml;
+  });
+}
+
 function atualizarPesoEstimado() {
   const sel = qs('#pr-peca');
   const opt = sel.options[sel.selectedIndex];
@@ -988,7 +1040,8 @@ async function registrarProducao(e) {
   const pesoUnit = parseFloat(pecaOpt?.dataset.peso || 0);
   const qtd = parseInt(qs('#pr-quantidade').value || 0);
   const refugo = parseInt(qs('#pr-refugo').value || 0);
-  const operador = qs('#pr-operador').value.trim();
+  const operadorId = qs('#pr-operador').value;
+  const operadorNome = operadorId ? qs('#pr-operador').options[qs('#pr-operador').selectedIndex].textContent : null;
   const turno = qs('#pr-turno').value;
 
   if (!roloId || !pecaId || !qtd) { setAlerta('alerta-producao', 'err', 'Preencha rolo, peça e quantidade'); return; }
@@ -1007,7 +1060,7 @@ async function registrarProducao(e) {
 
   const { data: apontamento, error: e2 } = await sb.from('apontamentos_producao').insert({
     rolo_id: roloId, peca_id: pecaId, quantidade_produzida: qtd, quantidade_refugo: refugo,
-    peso_estimado_kg: pesoEstimado, operador: operador || null, turno: turno || null, lote_caixa: loteCaixa
+    peso_estimado_kg: pesoEstimado, operador_id: operadorId || null, turno: turno || null, lote_caixa: loteCaixa
   }).select().single();
   if (e2) { setAlerta('alerta-producao', 'err', e2.message); return; }
 
@@ -1017,7 +1070,7 @@ async function registrarProducao(e) {
   qs('#producao-form-view').style.display = 'none';
   qs('#producao-result-view').style.display = 'block';
 
-  abrirEtiquetaCaixa({ ...apontamento, lote_rolo: rolo.lote, lote_fornecedor: rolo.lote_fornecedor, bitola_valor: rolo.bitolas?.valor_mm, peca_nome: pecaOpt.textContent });
+  abrirEtiquetaCaixa({ ...apontamento, lote_rolo: rolo.lote, lote_fornecedor: rolo.lote_fornecedor, bitola_valor: rolo.bitolas?.valor_mm, operador_nome: operadorNome, peca_nome: pecaOpt.textContent });
 }
 function resetProducaoForm() {
   qs('#form-producao').reset();
@@ -1143,6 +1196,37 @@ async function alternarAtivoBitola(id, ativoAtual) {
   if (!error) loadAdminBitolas();
 }
 
+/* ===================== ADMIN — OPERADORES ===================== */
+async function adicionarOperador(e) {
+  e.preventDefault();
+  limparAlertas('alerta-add-operador', 'alerta-add-operador-ok');
+  const nome = qs('#ao-nome').value.trim();
+  if (!nome) { setAlerta('alerta-add-operador', 'err', 'Informe o nome'); return; }
+  const { error } = await sb.from('operadores').insert({ nome });
+  if (error) { setAlerta('alerta-add-operador', 'err', error.message); return; }
+  setAlerta('alerta-add-operador-ok', 'ok', 'Operador cadastrado');
+  qs('#form-add-operador').reset();
+  loadAdminOperadores();
+}
+
+async function loadAdminOperadores() {
+  const { data, error } = await sb.from('operadores').select('*').order('nome');
+  if (error) return;
+  qs('#tabela-operadores').innerHTML = data.map(o => `
+    <tr>
+      <td>${o.nome}</td>
+      <td><span class="badge ${o.ativo ? 'b-conf' : 'b-fora'}">${o.ativo ? 'ativo' : 'inativo'}</span></td>
+      <td class="actions-cell">
+        <button class="link-btn danger" onclick="alternarAtivoOperador('${o.id}', ${o.ativo})">${o.ativo ? 'desativar' : 'ativar'}</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function alternarAtivoOperador(id, ativoAtual) {
+  const { error } = await sb.from('operadores').update({ ativo: !ativoAtual }).eq('id', id);
+  if (!error) loadAdminOperadores();
+}
+
 async function loadAdminConfig() { qs('#ac-limite').value = await getLimiteZerarRolo(); }
 async function salvarConfig(e) {
   e.preventDefault();
@@ -1196,7 +1280,7 @@ function abrirEtiquetaRolo(rolo) {
     ['Lote', rolo.lote],
     ['Bitola/Peso', `${bitolaTxt} · ${Number(rolo.peso_entrada_kg).toFixed(1)} kg`],
     ['Fornecedor', fornecTxt],
-    ['Operador', rolo.operador || '-'],
+    ['Operador', rolo.operadores?.nome || '-'],
     ['Data', dataCurta(rolo.data_entrada)],
   ]);
 }
@@ -1208,7 +1292,7 @@ function abrirEtiquetaCaixa(d) {
     ['Rolo', roloTxt],
     ['Peça', pecaTxt],
     ['Qtd/Refugo', `${d.quantidade_produzida} / ${d.quantidade_refugo}`],
-    ['Data', dataCurta(d.data_hora)],
+    ['Operador', `${d.operador_nome || '-'} · ${dataCurta(d.data_hora)}`],
   ]);
 }
 function fecharEtiqueta() { qs('#label-overlay').classList.remove('open'); }
