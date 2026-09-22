@@ -283,15 +283,17 @@ td.actions-cell{display:flex;gap:12px}
 .etq-top{display:flex;justify-content:space-between;align-items:baseline;font-size:7pt}
 .etq-top strong{font-size:8pt}
 .etq-div{height:1px;background:#000;margin:1mm 0}
-.etq-qr{display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.etq-qr-col{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;gap:1.5mm}
+.etq-qr{display:flex;align-items:center;justify-content:center}
 .etq-qr canvas{width:34mm!important;height:34mm!important;image-rendering:pixelated}
+.etq-peso-destaque{font-size:20pt;font-weight:900;text-align:center;line-height:1}
+.etq-peso-destaque .etq-peso-unidade{font-size:11pt;font-weight:700}
 .etq-body{display:flex;gap:3mm;flex:1;align-items:center}
 .etq-tbl{flex:1;border-collapse:collapse;font-size:10pt;color:#000!important}
 .etq-tbl td{padding:2.4mm 0;border-bottom:1px dashed #bbb;color:#000!important}
 .etq-tbl tr:last-child td{border-bottom:none}
 .etq-tbl td:first-child{font-weight:900;white-space:nowrap;padding-right:3mm}
 .etq-id{font-family:monospace;font-size:15pt;font-weight:900;letter-spacing:1px}
-.etq-destaque{font-size:13pt;font-weight:900}
 .etq-toolbar{display:flex;gap:10px;justify-content:center;margin-top:16px}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -1272,14 +1274,17 @@ async function salvarConfig(e) {
 }
 
 /* ===================== ETIQUETAS ===================== */
-function renderEtiquetaComQr(qrPayload, identificador, linhas) {
+function renderEtiquetaComQr(qrPayload, identificador, linhas, destaqueAcimaQr) {
   const linhasHtml = linhas.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   qs('#label-content').innerHTML = `
     <div class="etq-top"><strong>VITALBOR</strong><span class="etq-id">${identificador}</span></div>
     <div class="etq-div"></div>
     <div class="etq-body">
       <table class="etq-tbl">${linhasHtml}</table>
-      <div class="etq-qr"><canvas id="qr-canvas"></canvas></div>
+      <div class="etq-qr-col">
+        ${destaqueAcimaQr || ''}
+        <div class="etq-qr"><canvas id="qr-canvas"></canvas></div>
+      </div>
     </div>
   `;
   qs('#label-overlay').classList.add('open');
@@ -1303,11 +1308,18 @@ function desenharQr(codigo, tentativas) {
   });
 }
 
+function proximoContadorAvulsa() {
+  const atual = parseInt(localStorage.getItem('avulsa_contador') || '0', 10) + 1;
+  try { localStorage.setItem('avulsa_contador', String(atual)); } catch (e) {}
+  return atual;
+}
+
 function abrirEtiquetaRolo(rolo) {
   const bitolaTxt = rolo.bitola_texto || (rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) : '-');
   const operadorTxt = rolo.operador_texto || rolo.operadores?.nome || '-';
   const loteTxt = rolo.lote_fornecedor || '-';
-  const numeroTxt = rolo.numero_sequencial != null ? String(rolo.numero_sequencial) : (rolo.avulsa ? 'PRÉVIA' : '—');
+  const numeroTxt = rolo.numero_sequencial != null ? String(rolo.numero_sequencial)
+    : (rolo.avulsa ? String(proximoContadorAvulsa()) : '—');
 
   // Rolo real: o QR guarda só o número sequencial — escanear (ou digitar esse número
   // na mão) busca o registro ao vivo no banco (peso atual/status atualizados, não um
@@ -1315,9 +1327,11 @@ function abrirEtiquetaRolo(rolo) {
   // só como chave técnica no banco, sem aparecer mais na etiqueta.
   // Avulsa: não existe registro nenhum pra buscar depois, então o QR carrega os dados
   // completos direto, senão escanear essa etiqueta depois não levaria a lugar nenhum.
+  // O número da avulsa vem de um contador local (localStorage), só pra cada etiqueta
+  // avulsa impressa ter um identificador único — não é ligado a nenhum registro real.
   const qrPayload = rolo.avulsa
     ? [
-        'VITALBOR - ENTRADA DE ROLO (AVULSA)',
+        `VITALBOR - ENTRADA DE ROLO (AVULSA Nº ${numeroTxt})`,
         `Lote fornecedor: ${loteTxt}`,
         `Peso: ${Number(rolo.peso_entrada_kg).toFixed(1)} kg`,
         `Bitola: ${bitolaTxt}`,
@@ -1327,13 +1341,15 @@ function abrirEtiquetaRolo(rolo) {
       ].join('\n')
     : numeroTxt;
 
+  const pesoDestaque = `<div class="etq-peso-destaque">${Number(rolo.peso_entrada_kg).toFixed(1)}<span class="etq-peso-unidade"> kg</span></div>`;
+
   renderEtiquetaComQr(qrPayload, numeroTxt, [
-    ['Bitola/Peso', `<span class="etq-destaque">${bitolaTxt} · ${Number(rolo.peso_entrada_kg).toFixed(1)} kg</span>`],
+    ['Bitola', bitolaTxt],
     ['Lote', loteTxt],
     ['Fornecedor', rolo.fornecedor || '-'],
     ['Operador', operadorTxt],
     ['Data e hora', dataCurta(rolo.data_entrada)],
-  ]);
+  ], pesoDestaque);
 }
 function abrirEtiquetaCaixa(d) {
   const pecaTxt = d.peca_codigo ? `${d.peca_nome} (${d.peca_codigo})` : d.peca_nome;
