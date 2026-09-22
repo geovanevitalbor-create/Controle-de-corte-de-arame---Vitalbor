@@ -276,12 +276,12 @@ td.actions-cell{display:flex;gap:12px}
 .etq-top strong{font-size:8pt}
 .etq-div{height:1px;background:#000;margin:1mm 0}
 .etq-qr{display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.etq-qr canvas{width:45mm!important;height:45mm!important;image-rendering:pixelated}
+.etq-qr canvas{width:34mm!important;height:34mm!important;image-rendering:pixelated}
 .etq-body{display:flex;gap:3mm;flex:1;align-items:center}
-.etq-tbl{flex:1;border-collapse:collapse;font-size:7.5pt;color:#000}
-.etq-tbl td{padding:1.6mm 0;border-bottom:1px dashed #bbb}
+.etq-tbl{flex:1;border-collapse:collapse;font-size:10pt;color:#000!important}
+.etq-tbl td{padding:2.4mm 0;border-bottom:1px dashed #bbb;color:#000!important}
 .etq-tbl tr:last-child td{border-bottom:none}
-.etq-tbl td:first-child{font-weight:900;white-space:nowrap;padding-right:2mm}
+.etq-tbl td:first-child{font-weight:900;white-space:nowrap;padding-right:3mm}
 .etq-code{font-family:monospace;font-size:6pt;text-align:center;letter-spacing:1px;margin-top:1mm}
 .etq-toolbar{display:flex;gap:10px;justify-content:center;margin-top:16px}
 @media print{
@@ -516,6 +516,10 @@ td.actions-cell{display:flex;gap:12px}
             <div class="field"><label>Peso do rolo (kg)</label><input type="number" step="0.01" id="er-peso" required></div>
             <div class="field"><label>Fornecedor (opcional)</label><input type="text" id="er-fornecedor"></div>
           </div>
+          <div class="row2">
+            <div class="field"><label>Bitola do arame</label><select id="er-bitola" required></select></div>
+            <div class="field"><label>Operador responsável</label><input type="text" id="er-operador"></div>
+          </div>
           <div class="field"><label>Lote do fornecedor</label><input type="text" id="er-lote-fornecedor"></div>
           <div class="field"><label>Observações (opcional)</label><textarea id="er-obs" rows="2"></textarea></div>
           <div class="alert alert-err" id="alerta-entrada"></div>
@@ -675,6 +679,7 @@ td.actions-cell{display:flex;gap:12px}
   </div>
   <div class="admin-bar">
     <button class="admin-tab on" data-tab="admin-pecas" onclick="mudarAdminTab('admin-pecas')">Peças</button>
+    <button class="admin-tab" data-tab="admin-bitolas" onclick="mudarAdminTab('admin-bitolas')">Bitolas</button>
     <button class="admin-tab" data-tab="admin-config" onclick="mudarAdminTab('admin-config')">Configuração</button>
   </div>
   <div class="content">
@@ -697,6 +702,24 @@ td.actions-cell{display:flex;gap:12px}
         <table>
           <thead><tr><th>Nome</th><th>Código</th><th>Peso (g)</th><th>Status</th><th></th></tr></thead>
           <tbody id="tabela-pecas"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="admin-panel" data-panel="admin-bitolas">
+      <div class="fbox">
+        <h4>Cadastrar bitola</h4>
+        <form id="form-add-bitola" onsubmit="adicionarBitola(event)">
+          <div class="field"><label>Espessura (mm)</label><input type="number" step="0.01" id="ab-valor" placeholder="ex: 2.20" required></div>
+          <div class="alert alert-err" id="alerta-add-bitola"></div>
+          <div class="alert alert-ok" id="alerta-add-bitola-ok"></div>
+          <button class="btn btn-accent" type="submit">Cadastrar bitola</button>
+        </form>
+      </div>
+      <div class="fbox">
+        <h4>Bitolas cadastradas</h4>
+        <table>
+          <thead><tr><th>Espessura</th><th>Status</th><th></th></tr></thead>
+          <tbody id="tabela-bitolas"></tbody>
         </table>
       </div>
     </div>
@@ -757,6 +780,7 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 
   if (id === 'screen-mov-saida') { loadRolosAtivos(); }
+  if (id === 'screen-mov-entrada') { loadBitolas(); }
   if (id === 'screen-etiqueta') { loadRolosAtivos(); }
   if (id === 'screen-producao') { loadRolosAtivos(); loadPecas(); loadHistoricoProducao(); }
   if (id === 'screen-estoque') { loadEstoque(); }
@@ -780,6 +804,7 @@ function confirmarLogin() {
   fecharLogin();
   showScreen('screen-admin');
   loadAdminPecas();
+  loadAdminBitolas();
   loadAdminConfig();
 }
 
@@ -808,15 +833,18 @@ async function registrarEntradaRolo(e) {
   if (!checarSb()) { setAlerta('alerta-entrada', 'err', 'Supabase não configurado.'); return; }
   const peso = parseFloat(qs('#er-peso').value);
   const fornecedor = qs('#er-fornecedor').value.trim();
+  const bitolaId = qs('#er-bitola').value;
+  const operador = qs('#er-operador').value.trim();
   const loteFornecedor = qs('#er-lote-fornecedor').value.trim();
   const obs = qs('#er-obs').value.trim();
   if (!peso || peso <= 0) { setAlerta('alerta-entrada', 'err', 'Informe um peso válido'); return; }
+  if (!bitolaId) { setAlerta('alerta-entrada', 'err', 'Selecione a bitola do arame'); return; }
 
   const lote = await gerarLoteRolo();
   const { data, error } = await sb.from('rolos_arame').insert({
-    lote, peso_entrada_kg: peso, peso_atual_kg: peso,
+    lote, peso_entrada_kg: peso, peso_atual_kg: peso, bitola_id: bitolaId, operador: operador || null,
     fornecedor: fornecedor || null, lote_fornecedor: loteFornecedor || null, observacoes: obs || null, status: 'ativo'
-  }).select().single();
+  }).select('*, bitolas(valor_mm)').single();
 
   if (error) { setAlerta('alerta-entrada', 'err', 'Erro ao registrar: ' + error.message); return; }
 
@@ -884,18 +912,18 @@ function guardarRolosCache(lista) { lista.forEach(r => { _rolosCache[r.id] = r; 
 
 async function loadRolosAtivos() {
   if (!sb) return;
-  const { data, error } = await sb.from('rolos_arame').select('*').eq('status', 'ativo').order('data_entrada', { ascending: false });
+  const { data, error } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').eq('status', 'ativo').order('data_entrada', { ascending: false });
   if (error) return;
   guardarRolosCache(data);
 
   const options = '<option value="">Selecione o rolo</option>' + data.map(r =>
-    `<option value="${r.id}">${r.lote} — restante ${Number(r.peso_atual_kg).toFixed(1)} kg</option>`).join('');
+    `<option value="${r.id}">${r.lote} — ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' — ' : ''}restante ${Number(r.peso_atual_kg).toFixed(1)} kg</option>`).join('');
   const selProd = qs('#pr-rolo'); if (selProd) selProd.innerHTML = options;
   const selSaida = qs('#sr-rolo'); if (selSaida) selSaida.innerHTML = options;
 
   const linhas = data.length ? data.map(r => `
     <div class="row-item">
-      <div><strong>${r.lote}</strong><span class="dim"> · ${r.fornecedor || 'sem fornecedor'}</span></div>
+      <div><strong>${r.lote}</strong><span class="dim"> · ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' · ' : ''}${r.fornecedor || 'sem fornecedor'}</span></div>
       <div class="row-item-actions">
         <span>${Number(r.peso_atual_kg).toFixed(1)} kg</span>
         <button class="link-btn" onclick="reimprimirEtiquetaRolo('${r.id}')">etiqueta</button>
@@ -915,6 +943,19 @@ async function loadPecas() {
   const sel = qs('#pr-peca');
   if (sel) sel.innerHTML = '<option value="">Selecione a peça</option>' +
     data.map(p => `<option value="${p.id}" data-peso="${p.peso_unitario_g}">${p.nome}</option>`).join('');
+}
+
+function formatarBitola(valorMm) {
+  return String(valorMm).replace('.', ',') + ' mm';
+}
+
+async function loadBitolas() {
+  if (!sb) return;
+  const { data, error } = await sb.from('bitolas').select('*').eq('ativo', true).order('valor_mm');
+  if (error) return;
+  const sel = qs('#er-bitola');
+  if (sel) sel.innerHTML = '<option value="">Selecione a bitola</option>' +
+    data.map(b => `<option value="${b.id}">${formatarBitola(b.valor_mm)}</option>`).join('');
 }
 
 function atualizarPesoEstimado() {
@@ -943,7 +984,7 @@ async function registrarProducao(e) {
   if (!roloId || !pecaId || !qtd) { setAlerta('alerta-producao', 'err', 'Preencha rolo, peça e quantidade'); return; }
   const pesoEstimado = (pesoUnit * (qtd + refugo)) / 1000;
 
-  const { data: rolo, error: e1 } = await sb.from('rolos_arame').select('*').eq('id', roloId).single();
+  const { data: rolo, error: e1 } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').eq('id', roloId).single();
   if (e1) { setAlerta('alerta-producao', 'err', e1.message); return; }
 
   const limite = await getLimiteZerarRolo();
@@ -966,7 +1007,7 @@ async function registrarProducao(e) {
   qs('#producao-form-view').style.display = 'none';
   qs('#producao-result-view').style.display = 'block';
 
-  abrirEtiquetaCaixa({ ...apontamento, lote_rolo: rolo.lote, lote_fornecedor: rolo.lote_fornecedor, peca_nome: pecaOpt.textContent });
+  abrirEtiquetaCaixa({ ...apontamento, lote_rolo: rolo.lote, lote_fornecedor: rolo.lote_fornecedor, bitola_valor: rolo.bitolas?.valor_mm, peca_nome: pecaOpt.textContent });
 }
 function resetProducaoForm() {
   qs('#form-producao').reset();
@@ -992,12 +1033,12 @@ async function loadHistoricoProducao() {
 /* ===================== ESTOQUE ===================== */
 async function loadEstoque() {
   if (!sb) return;
-  const { data: rolos, error: e1 } = await sb.from('rolos_arame').select('*').order('data_entrada', { ascending: false });
+  const { data: rolos, error: e1 } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').order('data_entrada', { ascending: false });
   if (!e1) {
     guardarRolosCache(rolos);
     qs('#lista-estoque-rolos').innerHTML = rolos.length ? rolos.map(r => `
       <div class="row-item">
-        <div><strong>${r.lote}</strong><span class="dim"> · ${r.fornecedor || 'sem fornecedor'}</span></div>
+        <div><strong>${r.lote}</strong><span class="dim"> · ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' · ' : ''}${r.fornecedor || 'sem fornecedor'}</span></div>
         <div class="row-item-actions">
           <span class="badge ${r.status === 'ativo' ? 'b-conf' : 'b-excl'}">${r.status}</span>
           <span>${Number(r.peso_atual_kg).toFixed(1)} kg</span>
@@ -1061,6 +1102,37 @@ async function alternarAtivoPeca(id, ativoAtual) {
   if (!error) loadAdminPecas();
 }
 
+/* ===================== ADMIN — BITOLAS ===================== */
+async function adicionarBitola(e) {
+  e.preventDefault();
+  limparAlertas('alerta-add-bitola', 'alerta-add-bitola-ok');
+  const valor = parseFloat(qs('#ab-valor').value);
+  if (!valor || valor <= 0) { setAlerta('alerta-add-bitola', 'err', 'Informe uma espessura válida'); return; }
+  const { error } = await sb.from('bitolas').insert({ valor_mm: valor });
+  if (error) { setAlerta('alerta-add-bitola', 'err', error.message); return; }
+  setAlerta('alerta-add-bitola-ok', 'ok', 'Bitola cadastrada');
+  qs('#form-add-bitola').reset();
+  loadAdminBitolas();
+}
+
+async function loadAdminBitolas() {
+  const { data, error } = await sb.from('bitolas').select('*').order('valor_mm');
+  if (error) return;
+  qs('#tabela-bitolas').innerHTML = data.map(b => `
+    <tr>
+      <td>${formatarBitola(b.valor_mm)}</td>
+      <td><span class="badge ${b.ativo ? 'b-conf' : 'b-fora'}">${b.ativo ? 'ativa' : 'inativa'}</span></td>
+      <td class="actions-cell">
+        <button class="link-btn danger" onclick="alternarAtivoBitola('${b.id}', ${b.ativo})">${b.ativo ? 'desativar' : 'ativar'}</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function alternarAtivoBitola(id, ativoAtual) {
+  const { error } = await sb.from('bitolas').update({ ativo: !ativoAtual }).eq('id', id);
+  if (!error) loadAdminBitolas();
+}
+
 async function loadAdminConfig() { qs('#ac-limite').value = await getLimiteZerarRolo(); }
 async function salvarConfig(e) {
   e.preventDefault();
@@ -1106,20 +1178,25 @@ function desenharQr(codigo, tentativas) {
 }
 
 function abrirEtiquetaRolo(rolo) {
+  const bitolaTxt = rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) : '-';
+  const fornecTxt = rolo.fornecedor
+    ? (rolo.lote_fornecedor ? `${rolo.fornecedor} (lote ${rolo.lote_fornecedor})` : rolo.fornecedor)
+    : (rolo.lote_fornecedor ? `lote ${rolo.lote_fornecedor}` : '-');
   renderEtiquetaComQr(rolo.lote, 'Entrada de rolo', [
     ['Lote', rolo.lote],
-    ['Lote forn.', rolo.lote_fornecedor || '-'],
-    ['Peso', Number(rolo.peso_entrada_kg).toFixed(1) + ' kg'],
-    ['Fornec.', rolo.fornecedor || '-'],
+    ['Bitola/Peso', `${bitolaTxt} · ${Number(rolo.peso_entrada_kg).toFixed(1)} kg`],
+    ['Fornecedor', fornecTxt],
+    ['Operador', rolo.operador || '-'],
     ['Data', dataCurta(rolo.data_entrada)],
   ]);
 }
 function abrirEtiquetaCaixa(d) {
+  const roloTxt = d.lote_fornecedor ? `${d.lote_rolo} (forn. ${d.lote_fornecedor})` : d.lote_rolo;
+  const pecaTxt = d.bitola_valor != null ? `${d.peca_nome} · ${formatarBitola(d.bitola_valor)}` : d.peca_nome;
   renderEtiquetaComQr(d.lote_caixa, 'Caixa de produção', [
     ['Lote cx', d.lote_caixa],
-    ['Rolo', d.lote_rolo],
-    ['Lote forn.', d.lote_fornecedor || '-'],
-    ['Peça', d.peca_nome],
+    ['Rolo', roloTxt],
+    ['Peça', pecaTxt],
     ['Qtd/Refugo', `${d.quantidade_produzida} / ${d.quantidade_refugo}`],
     ['Data', dataCurta(d.data_hora)],
   ]);
@@ -1144,7 +1221,7 @@ function abrirScannerConsulta() { abrirScanner(onScanConsultaSucesso); }
 async function onScanSaidaSucesso(lote) {
   lote = (lote || '').trim();
   if (!lote || !checarSb()) return;
-  const { data, error } = await sb.from('rolos_arame').select('*').eq('lote', lote).single();
+  const { data, error } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').eq('lote', lote).single();
   if (error || !data) { setAlerta('alerta-saida', 'err', `Rolo "${lote}" não encontrado`); return; }
   if (data.status !== 'ativo') { setAlerta('alerta-saida', 'err', `Rolo ${lote} já está zerado`); return; }
   limparAlertas('alerta-saida');
@@ -1155,13 +1232,13 @@ async function onScanSaidaSucesso(lote) {
 async function onScanConsultaSucesso(lote) {
   lote = (lote || '').trim();
   if (!lote || !checarSb()) return;
-  const { data, error } = await sb.from('rolos_arame').select('*').eq('lote', lote).single();
+  const { data, error } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').eq('lote', lote).single();
   const painel = qs('#consulta-resultado');
   if (error || !data) { painel.innerHTML = `<div class="empty">Rolo "${lote}" não encontrado.</div>`; return; }
   _rolosCache[data.id] = data;
   painel.innerHTML = `
     <div class="row-item">
-      <div><strong>${data.lote}</strong><span class="dim"> · ${data.fornecedor || 'sem fornecedor'}</span></div>
+      <div><strong>${data.lote}</strong><span class="dim"> · ${data.bitolas?.valor_mm != null ? formatarBitola(data.bitolas.valor_mm) + ' · ' : ''}${data.fornecedor || 'sem fornecedor'}</span></div>
       <div class="row-item-actions">
         <span class="badge ${data.status === 'ativo' ? 'b-conf' : 'b-excl'}">${data.status}</span>
         <span>${Number(data.peso_atual_kg).toFixed(1)} kg</span>
@@ -1180,7 +1257,7 @@ function selecionarRoloNoForm(seletor, rolo) {
   const sel = qs(seletor);
   let opt = Array.from(sel.options).find(o => o.value === rolo.id);
   if (!opt) { opt = document.createElement('option'); opt.value = rolo.id; sel.appendChild(opt); }
-  opt.textContent = `${rolo.lote} — restante ${Number(rolo.peso_atual_kg).toFixed(1)} kg`;
+  opt.textContent = `${rolo.lote} — ${rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) + ' — ' : ''}restante ${Number(rolo.peso_atual_kg).toFixed(1)} kg`;
   sel.value = rolo.id;
 }
 </script>
