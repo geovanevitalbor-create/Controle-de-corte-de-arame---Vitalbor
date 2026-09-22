@@ -290,7 +290,7 @@ td.actions-cell{display:flex;gap:12px}
 .etq-tbl td{padding:2.4mm 0;border-bottom:1px dashed #bbb;color:#000!important}
 .etq-tbl tr:last-child td{border-bottom:none}
 .etq-tbl td:first-child{font-weight:900;white-space:nowrap;padding-right:3mm}
-.etq-code{font-family:monospace;font-size:6pt;text-align:center;letter-spacing:1px;margin-top:1mm}
+.etq-code{font-family:monospace;font-size:13pt;font-weight:900;text-align:center;letter-spacing:2px;margin-top:1.5mm}
 .etq-toolbar{display:flex;gap:10px;justify-content:center;margin-top:16px}
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -487,8 +487,8 @@ td.actions-cell{display:flex;gap:12px}
   </div>
   <div class="content">
     <div class="scan-zone">
-      <label>Bipe ou digite o lote do rolo</label>
-      <input type="text" class="scan-inp" id="mov-escanear-input" autocomplete="off"
+      <label>Bipe ou digite o número da etiqueta</label>
+      <input type="text" inputmode="numeric" class="scan-inp" id="mov-escanear-input" autocomplete="off"
         onkeydown="if(event.key==='Enter'){event.preventDefault();onScanConsultaSucesso(this.value);this.value='';}">
       <p class="hint" style="margin-top:12px;display:block;">Leitor de código de barras/QR digita aqui automaticamente. Sem leitor à mão:</p>
       <button class="btn btn-ghost btn-sm" type="button" style="margin-top:10px;" onclick="abrirScannerConsulta()">
@@ -549,6 +549,7 @@ td.actions-cell{display:flex;gap:12px}
             <div class="field"><label>Bitola (opcional)</label><select name="bitola" class="bitola-select"><option value="">—</option></select></div>
             <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
           </div>
+          <div class="field"><label>Operador responsável</label><select name="operador" class="operador-select"><option value="">Selecione o operador</option></select></div>
           <button class="btn btn-ghost" type="submit">Gerar etiqueta</button>
           <p class="hint" style="margin-top:8px;display:block;">Não grava no banco — só pra imprimir na hora.</p>
         </form>
@@ -584,8 +585,8 @@ td.actions-cell{display:flex;gap:12px}
 
     <div id="mov-saida-form-view">
       <div class="scan-zone">
-        <label>Bipe o lote pra selecionar o rolo</label>
-        <input type="text" class="scan-inp" id="mov-saida-scan-input" autocomplete="off"
+        <label>Bipe ou digite o número da etiqueta pra selecionar o rolo</label>
+        <input type="text" inputmode="numeric" class="scan-inp" id="mov-saida-scan-input" autocomplete="off"
           onkeydown="if(event.key==='Enter'){event.preventDefault();onScanSaidaSucesso(this.value);this.value='';}">
         <button class="btn btn-ghost btn-sm" type="button" style="margin-top:12px;" onclick="abrirScannerSaida()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3.5"/></svg>
@@ -674,6 +675,7 @@ td.actions-cell{display:flex;gap:12px}
           <div class="field"><label>Bitola (opcional)</label><select name="bitola" class="bitola-select"><option value="">—</option></select></div>
           <div class="field"><label>Lote do fornecedor</label><input type="text" name="lote_fornecedor"></div>
         </div>
+        <div class="field"><label>Operador responsável</label><select name="operador" class="operador-select"><option value="">Selecione o operador</option></select></div>
         <button class="btn btn-accent" type="submit">Gerar etiqueta</button>
       </form>
     </div>
@@ -819,7 +821,7 @@ function showScreen(id) {
 
   if (id === 'screen-mov-saida') { loadRolosAtivos(); }
   if (id === 'screen-mov-entrada') { loadBitolas(); loadOperadores(); preencherDataHoje(); }
-  if (id === 'screen-etiqueta') { loadRolosAtivos(); loadBitolas(); }
+  if (id === 'screen-etiqueta') { loadRolosAtivos(); loadBitolas(); loadOperadores(); }
   if (id === 'screen-producao') { loadRolosAtivos(); loadPecas(); loadOperadores(); loadHistoricoProducao(); }
   if (id === 'screen-estoque') { loadEstoque(); }
 
@@ -915,10 +917,13 @@ function gerarEtiquetaAvulsa(e) {
   const loteFornecedor = e.target.querySelector('[name="lote_fornecedor"]').value.trim();
   const bitolaSel = e.target.querySelector('[name="bitola"]');
   const bitolaTexto = bitolaSel && bitolaSel.value ? bitolaSel.options[bitolaSel.selectedIndex].textContent : null;
+  const operadorSel = e.target.querySelector('[name="operador"]');
+  const operadorTexto = operadorSel && operadorSel.value ? operadorSel.options[operadorSel.selectedIndex].textContent : null;
   if (!peso || peso <= 0) { alert('Informe o peso do rolo antes de gerar a etiqueta'); return; }
   abrirEtiquetaRolo({
     lote: `RL-${hojeStr()}-PRÉVIA`, peso_entrada_kg: peso, fornecedor, bitola_texto: bitolaTexto,
-    lote_fornecedor: loteFornecedor, data_entrada: new Date().toISOString()
+    operador_texto: operadorTexto, lote_fornecedor: loteFornecedor, data_entrada: new Date().toISOString(),
+    avulsa: true
   });
 }
 
@@ -967,13 +972,13 @@ async function loadRolosAtivos() {
   guardarRolosCache(data);
 
   const options = '<option value="">Selecione o rolo</option>' + data.map(r =>
-    `<option value="${r.id}">${r.lote} — ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' — ' : ''}restante ${Number(r.peso_atual_kg).toFixed(1)} kg</option>`).join('');
+    `<option value="${r.id}">Nº ${r.numero_sequencial} — ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' — ' : ''}restante ${Number(r.peso_atual_kg).toFixed(1)} kg</option>`).join('');
   const selProd = qs('#pr-rolo'); if (selProd) selProd.innerHTML = options;
   const selSaida = qs('#sr-rolo'); if (selSaida) selSaida.innerHTML = options;
 
   const linhas = data.length ? data.map(r => `
     <div class="row-item">
-      <div><strong>${r.lote}</strong><span class="dim"> · ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' · ' : ''}${r.fornecedor || 'sem fornecedor'}</span></div>
+      <div><strong>Nº ${r.numero_sequencial}</strong><span class="dim"> · ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' · ' : ''}${r.fornecedor || 'sem fornecedor'}</span></div>
       <div class="row-item-actions">
         <span>${Number(r.peso_atual_kg).toFixed(1)} kg</span>
         <button class="link-btn" onclick="reimprimirEtiquetaRolo('${r.id}')">etiqueta</button>
@@ -1101,7 +1106,7 @@ async function loadEstoque() {
     guardarRolosCache(rolos);
     qs('#lista-estoque-rolos').innerHTML = rolos.length ? rolos.map(r => `
       <div class="row-item">
-        <div><strong>${r.lote}</strong><span class="dim"> · ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' · ' : ''}${r.fornecedor || 'sem fornecedor'}</span></div>
+        <div><strong>Nº ${r.numero_sequencial}</strong><span class="dim"> · ${r.bitolas?.valor_mm != null ? formatarBitola(r.bitolas.valor_mm) + ' · ' : ''}${r.fornecedor || 'sem fornecedor'}</span></div>
         <div class="row-item-actions">
           <span class="badge ${r.status === 'ativo' ? 'b-conf' : 'b-excl'}">${r.status}</span>
           <span>${Number(r.peso_atual_kg).toFixed(1)} kg</span>
@@ -1186,9 +1191,19 @@ async function loadAdminBitolas() {
       <td>${formatarBitola(b.valor_mm)}</td>
       <td><span class="badge ${b.ativo ? 'b-conf' : 'b-fora'}">${b.ativo ? 'ativa' : 'inativa'}</span></td>
       <td class="actions-cell">
+        <button class="link-btn" onclick="editarValorBitola('${b.id}', ${b.valor_mm})">editar</button>
         <button class="link-btn danger" onclick="alternarAtivoBitola('${b.id}', ${b.ativo})">${b.ativo ? 'desativar' : 'ativar'}</button>
       </td>
     </tr>`).join('');
+}
+
+async function editarValorBitola(id, valorAtual) {
+  const novo = prompt('Nova espessura (mm):', valorAtual);
+  if (novo === null) return;
+  const val = parseFloat(novo.replace(',', '.'));
+  if (!val || val <= 0) return;
+  const { error } = await sb.from('bitolas').update({ valor_mm: val }).eq('id', id);
+  if (!error) loadAdminBitolas();
 }
 
 async function alternarAtivoBitola(id, ativoAtual) {
@@ -1217,9 +1232,19 @@ async function loadAdminOperadores() {
       <td>${o.nome}</td>
       <td><span class="badge ${o.ativo ? 'b-conf' : 'b-fora'}">${o.ativo ? 'ativo' : 'inativo'}</span></td>
       <td class="actions-cell">
+        <button class="link-btn" onclick="editarNomeOperador('${o.id}', '${o.nome.replace(/'/g, "\\'")}')">editar</button>
         <button class="link-btn danger" onclick="alternarAtivoOperador('${o.id}', ${o.ativo})">${o.ativo ? 'desativar' : 'ativar'}</button>
       </td>
     </tr>`).join('');
+}
+
+async function editarNomeOperador(id, nomeAtual) {
+  const novo = prompt('Novo nome:', nomeAtual);
+  if (novo === null) return;
+  const nome = novo.trim();
+  if (!nome) return;
+  const { error } = await sb.from('operadores').update({ nome }).eq('id', id);
+  if (!error) loadAdminOperadores();
 }
 
 async function alternarAtivoOperador(id, ativoAtual) {
@@ -1239,7 +1264,7 @@ async function salvarConfig(e) {
 }
 
 /* ===================== ETIQUETAS ===================== */
-function renderEtiquetaComQr(codigo, tituloEtq, linhas) {
+function renderEtiquetaComQr(qrPayload, textoExibido, tituloEtq, linhas) {
   const linhasHtml = linhas.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   qs('#label-content').innerHTML = `
     <div class="etq-top"><strong>VITALBOR</strong><span>${tituloEtq}</span></div>
@@ -1248,10 +1273,10 @@ function renderEtiquetaComQr(codigo, tituloEtq, linhas) {
       <table class="etq-tbl">${linhasHtml}</table>
       <div class="etq-qr"><canvas id="qr-canvas"></canvas></div>
     </div>
-    <div class="etq-code">${codigo}</div>
+    <div class="etq-code">${textoExibido}</div>
   `;
   qs('#label-overlay').classList.add('open');
-  desenharQr(codigo);
+  desenharQr(qrPayload);
 }
 
 function desenharQr(codigo, tentativas) {
@@ -1273,21 +1298,40 @@ function desenharQr(codigo, tentativas) {
 
 function abrirEtiquetaRolo(rolo) {
   const bitolaTxt = rolo.bitola_texto || (rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) : '-');
-  const fornecTxt = rolo.fornecedor
-    ? (rolo.lote_fornecedor ? `${rolo.fornecedor} (lote ${rolo.lote_fornecedor})` : rolo.fornecedor)
-    : (rolo.lote_fornecedor ? `lote ${rolo.lote_fornecedor}` : '-');
-  renderEtiquetaComQr(rolo.lote, 'Entrada de rolo', [
-    ['Lote', rolo.lote],
+  const operadorTxt = rolo.operador_texto || rolo.operadores?.nome || '-';
+  const loteTxt = rolo.lote_fornecedor || '-';
+  const numeroTxt = rolo.numero_sequencial != null ? String(rolo.numero_sequencial) : 'PRÉVIA';
+
+  // Rolo real: o QR guarda só o número sequencial — escanear (ou digitar esse número
+  // na mão) busca o registro ao vivo no banco (peso atual/status atualizados, não um
+  // retrato congelado do momento da entrada). O código interno RL-... continua existindo
+  // só como chave técnica no banco, sem aparecer mais na etiqueta.
+  // Avulsa: não existe registro nenhum pra buscar depois, então o QR carrega os dados
+  // completos direto, senão escanear essa etiqueta depois não levaria a lugar nenhum.
+  const qrPayload = rolo.avulsa
+    ? [
+        'VITALBOR - ENTRADA DE ROLO (AVULSA)',
+        `Lote fornecedor: ${loteTxt}`,
+        `Peso: ${Number(rolo.peso_entrada_kg).toFixed(1)} kg`,
+        `Bitola: ${bitolaTxt}`,
+        `Fornecedor: ${rolo.fornecedor || '-'}`,
+        `Operador: ${operadorTxt}`,
+        `Data: ${dataCurta(rolo.data_entrada)}`,
+      ].join('\n')
+    : numeroTxt;
+
+  renderEtiquetaComQr(qrPayload, numeroTxt, 'Entrada de rolo', [
+    ['Lote', loteTxt],
     ['Bitola/Peso', `${bitolaTxt} · ${Number(rolo.peso_entrada_kg).toFixed(1)} kg`],
-    ['Fornecedor', fornecTxt],
-    ['Operador', rolo.operadores?.nome || '-'],
+    ['Fornecedor', rolo.fornecedor || '-'],
+    ['Operador', operadorTxt],
     ['Data', dataCurta(rolo.data_entrada)],
   ]);
 }
 function abrirEtiquetaCaixa(d) {
   const roloTxt = d.lote_fornecedor ? `${d.lote_rolo} (forn. ${d.lote_fornecedor})` : d.lote_rolo;
   const pecaTxt = d.bitola_valor != null ? `${d.peca_nome} · ${formatarBitola(d.bitola_valor)}` : d.peca_nome;
-  renderEtiquetaComQr(d.lote_caixa, 'Caixa de produção', [
+  renderEtiquetaComQr(d.lote_caixa, d.lote_caixa, 'Caixa de produção', [
     ['Lote cx', d.lote_caixa],
     ['Rolo', roloTxt],
     ['Peça', pecaTxt],
@@ -1312,27 +1356,27 @@ function pararScanner() {
 function abrirScannerSaida() { abrirScanner(onScanSaidaSucesso); }
 function abrirScannerConsulta() { abrirScanner(onScanConsultaSucesso); }
 
-async function onScanSaidaSucesso(lote) {
-  lote = (lote || '').trim();
-  if (!lote || !checarSb()) return;
-  const { data, error } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').eq('lote', lote).single();
-  if (error || !data) { setAlerta('alerta-saida', 'err', `Rolo "${lote}" não encontrado`); return; }
-  if (data.status !== 'ativo') { setAlerta('alerta-saida', 'err', `Rolo ${lote} já está zerado`); return; }
+async function onScanSaidaSucesso(valor) {
+  const numero = parseInt((valor || '').trim(), 10);
+  if (!numero || !checarSb()) return;
+  const { data, error } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').eq('numero_sequencial', numero).single();
+  if (error || !data) { setAlerta('alerta-saida', 'err', `Rolo nº ${numero} não encontrado`); return; }
+  if (data.status !== 'ativo') { setAlerta('alerta-saida', 'err', `Rolo nº ${numero} já está zerado`); return; }
   limparAlertas('alerta-saida');
   _rolosCache[data.id] = data;
   selecionarRoloNoForm('#sr-rolo', data);
 }
 
-async function onScanConsultaSucesso(lote) {
-  lote = (lote || '').trim();
-  if (!lote || !checarSb()) return;
-  const { data, error } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').eq('lote', lote).single();
+async function onScanConsultaSucesso(valor) {
+  const numero = parseInt((valor || '').trim(), 10);
   const painel = qs('#consulta-resultado');
-  if (error || !data) { painel.innerHTML = `<div class="empty">Rolo "${lote}" não encontrado.</div>`; return; }
+  if (!numero || !checarSb()) { painel.innerHTML = `<div class="empty">Digite o número da etiqueta.</div>`; return; }
+  const { data, error } = await sb.from('rolos_arame').select('*, bitolas(valor_mm)').eq('numero_sequencial', numero).single();
+  if (error || !data) { painel.innerHTML = `<div class="empty">Rolo nº ${numero} não encontrado.</div>`; return; }
   _rolosCache[data.id] = data;
   painel.innerHTML = `
     <div class="row-item">
-      <div><strong>${data.lote}</strong><span class="dim"> · ${data.bitolas?.valor_mm != null ? formatarBitola(data.bitolas.valor_mm) + ' · ' : ''}${data.fornecedor || 'sem fornecedor'}</span></div>
+      <div><strong>Nº ${data.numero_sequencial}</strong><span class="dim"> · ${data.bitolas?.valor_mm != null ? formatarBitola(data.bitolas.valor_mm) + ' · ' : ''}${data.fornecedor || 'sem fornecedor'}</span></div>
       <div class="row-item-actions">
         <span class="badge ${data.status === 'ativo' ? 'b-conf' : 'b-excl'}">${data.status}</span>
         <span>${Number(data.peso_atual_kg).toFixed(1)} kg</span>
@@ -1351,7 +1395,7 @@ function selecionarRoloNoForm(seletor, rolo) {
   const sel = qs(seletor);
   let opt = Array.from(sel.options).find(o => o.value === rolo.id);
   if (!opt) { opt = document.createElement('option'); opt.value = rolo.id; sel.appendChild(opt); }
-  opt.textContent = `${rolo.lote} — ${rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) + ' — ' : ''}restante ${Number(rolo.peso_atual_kg).toFixed(1)} kg`;
+  opt.textContent = `Nº ${rolo.numero_sequencial} — ${rolo.bitolas?.valor_mm != null ? formatarBitola(rolo.bitolas.valor_mm) + ' — ' : ''}restante ${Number(rolo.peso_atual_kg).toFixed(1)} kg`;
   sel.value = rolo.id;
 }
 </script>
